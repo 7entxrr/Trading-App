@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Design tokens.
+
+   Every colour, radius, shadow and spacing step in the app resolves to a
+   variable declared here. Light mode ships later by overriding this block
+   under [data-theme='light'] — no component CSS needs to change.
+   ========================================================================== */
+
+:root,
+[data-theme='dark'] {
+  /* Surfaces: near-black with a cool cast, so gold and P/L colours pop. */
+  --bg: #0a0c10;
+  --bg-elevated: #0e1117;
+  --surface: #12151d;
+  --surface-raised: #171b25;
+  --surface-hover: #1c212c;
+  --surface-sunken: #0c0f15;
+
+  --border: #1f2530;
+  --border-strong: #2b3340;
+  --border-focus: #3d4a5f;
+
+  --text: #e9edf4;
+  --text-secondary: #a3acbd;
+  --text-muted: #737e92;
+  --text-faint: #4e5768;
+
+  /* Brand: GoldMiner. Used sparingly — accents, not fills. */
+  --gold: #e0b246;
+  --gold-strong: #f0c463;
+  --gold-dim: rgba(224, 178, 70, 0.14);
+
+  /* Semantic P/L and status colours. */
+  --positive: #2bd18a;
+  --positive-dim: rgba(43, 209, 138, 0.13);
+  --positive-border: rgba(43, 209, 138, 0.28);
+
+  --negative: #ff5a70;
+  --negative-dim: rgba(255, 90, 112, 0.13);
+  --negative-border: rgba(255, 90, 112, 0.3);
+
+  --warning: #f5b544;
+  --warning-dim: rgba(245, 181, 68, 0.13);
+  --warning-border: rgba(245, 181, 68, 0.3);
+
+  --info: #5b9cf8;
+  --info-dim: rgba(91, 156, 248, 0.13);
+  --info-border: rgba(91, 156, 248, 0.3);
+
+  --neutral: #7d879a;
+  --neutral-dim: rgba(125, 135, 154, 0.14);
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* Spacing */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.6);
+
+  --nav-height: 62px;
+  --topbar-height: 56px;
+  --content-max: 720px;
+  --sidebar-width: 248px;
+
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration: 220ms;
+}
+
+/* Light theme is scaffolded but not yet exposed in Settings. Every token below
+   has a dark counterpart above, so enabling it is a one-line toggle. */
+[data-theme='light'] {
+  --bg: #f5f6f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #f0f2f5;
+  --surface-sunken: #eceef2;
+
+  --border: #e2e5ea;
+  --border-strong: #cdd2da;
+  --border-focus: #a9b2bf;
+
+  --text: #11141b;
+  --text-secondary: #495264;
+  --text-muted: #6b7487;
+  --text-faint: #98a0ae;
+
+  --gold: #a97c14;
+  --gold-strong: #8f680d;
+  --gold-dim: rgba(169, 124, 20, 0.12);
+
+  --positive: #0f9d63;
+  --positive-dim: rgba(15, 157, 99, 0.1);
+  --positive-border: rgba(15, 157, 99, 0.25);
+
+  --negative: #d92b45;
+  --negative-dim: rgba(217, 43, 69, 0.1);
+  --negative-border: rgba(217, 43, 69, 0.25);
+
+  --warning: #b97e07;
+  --warning-dim: rgba(185, 126, 7, 0.1);
+  --warning-border: rgba(185, 126, 7, 0.25);
+
+  --info: #2563d9;
+  --info-dim: rgba(37, 99, 217, 0.1);
+  --info-border: rgba(37, 99, 217, 0.25);
+
+  --neutral: #6b7487;
+  --neutral-dim: rgba(107, 116, 135, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 40px rgba(16, 24, 40, 0.12);
+  --shadow-sheet: 0 -8px 40px rgba(16, 24, 40, 0.18);
+}

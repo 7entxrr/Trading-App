@@ -1,0 +1,13 @@
+{
+  "name": "goldminer-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Read-only backend bridging MT5 GoldMinerMonitor snapshots to the GoldMiner dashboard's GET/PATCH API contract. GET everywhere, PATCH only for alert read-state. No trading endpoint exists or may be added — see ../docs/READ_ONLY.md.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {}
+}
