@@ -33,6 +33,9 @@ function backendMessage(body: unknown): string | undefined {
   const b = body as Record<string, unknown>;
   const err = b.error as Record<string, unknown> | undefined;
   if (err && typeof err.message === "string") return err.message;
+  // Trading result wrapped in the envelope (HTTP 502 path): { data: { error: { message } } }
+  const inner = (b.data as Record<string, unknown> | undefined)?.error as Record<string, unknown> | undefined;
+  if (inner && typeof inner.message === "string") return inner.message;
   if (typeof b.detail === "string") return b.detail;
   // FastAPI 422: detail is a list of { loc, msg }
   if (Array.isArray(b.detail)) {
@@ -46,13 +49,15 @@ function backendMessage(body: unknown): string | undefined {
 }
 
 export function toApiError(status: number, body: unknown): ApiError {
-  const b = (body ?? {}) as { error?: { code?: string; uncertain?: boolean } };
+  const b = (body ?? {}) as { error?: { code?: string; uncertain?: boolean }; data?: { status?: string } };
   const code = b.error?.code ?? `HTTP_${status}`;
+  // A command whose inner status is "uncertain" must never be treated as a plain failure.
+  const uncertain = !!b.error?.uncertain || b.data?.status === "uncertain";
   const generic = STATUS_MESSAGES[status] ?? (status >= 500 ? "Server unavailable" : "Request failed");
   // Show the backend's own message when it gives one (never a stack trace: we only take strings from known fields).
   const detail = backendMessage(body);
   const message = detail && detail.length < 300 ? `${generic}: ${detail}` : generic;
-  return new ApiError(status, code, message, !!b.error?.uncertain);
+  return new ApiError(status, code, message, uncertain);
 }
 
 export function networkError(mutating: boolean): ApiError {

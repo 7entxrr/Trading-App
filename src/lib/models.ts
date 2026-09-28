@@ -13,9 +13,14 @@ export type ConnectionState = "connected" | "disconnected" | "stale" | "unknown"
 
 export interface SystemStatus {
   mt5: ConnectionState;
+  /** Backend infers this from AccountInfo.trade_expert (terminal Algo Trading flag). */
   eaRunning: boolean | null;
   lastHeartbeat: string | null;
-  message: string | null;
+  heartbeatAgeSeconds: number | null;
+  stale: boolean;
+  symbol: string | null;
+  multiplier: number | null;
+  slab: string | null;
 }
 
 export interface Account {
@@ -33,9 +38,8 @@ export interface Account {
   tradeAllowed: boolean | null;
   tradeExpert: boolean | null;
   timestamp: string | null;
-  tradingWindow: string | null;
-  multiplier: number | null;
-  slab: string | null;
+  broker: string | null;
+  credit: number | null;
 }
 
 export interface Position {
@@ -52,6 +56,8 @@ export interface Position {
   magic: number | null;
   comment: string | null;
   openTime: string | null;
+  /** True when magic = GoldMiner main magic (backend-computed). */
+  isGoldminer: boolean | null;
 }
 
 export interface PendingOrder {
@@ -116,6 +122,8 @@ export interface Alert {
 
 export interface ProtectionRule {
   enabled: boolean;
+  /** "equity_amount" (absolute) or "equity_percent" (of balance) */
+  mode: string | null;
   target: number | null;
   current: number | null;
   action: string | null;

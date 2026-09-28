@@ -45,7 +45,11 @@ export function HomeTop() {
             </p>
             <p className="flex items-center gap-1.5 text-[12px] text-[#9A9A9A]">
               <span className={`h-1.5 w-1.5 rounded-full ${STATUS_STYLE[conn].dot}`} />
-              {status.unmapped || status.error ? "Status unavailable" : STATUS_STYLE[conn].label}
+              {status.unmapped || status.error
+                ? "Status unavailable"
+                : status.data?.eaRunning === false
+                  ? `${STATUS_STYLE[conn].label} · Algo Trading off`
+                  : STATUS_STYLE[conn].label}
             </p>
           </div>
         </div>

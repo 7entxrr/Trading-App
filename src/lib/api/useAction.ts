@@ -13,26 +13,55 @@ export type ActionState =
   /** Sent, but we could not confirm whether it executed. Never auto-retried. */
   | { phase: "uncertain"; error: ApiError };
 
+type CommandResult = {
+  status?: unknown;
+  error?: { code?: unknown; message?: unknown } | null;
+  data?: { retcode_description?: unknown; requested?: unknown; succeeded?: unknown; failed?: unknown } | null;
+};
+
 /**
- * The backend can answer HTTP 2xx while reporting that the command itself was
- * rejected (deployment report: `status: "rejected"`, reason in
- * `data.retcode_description`). Only `status: "completed"` — or a response
- * without a status field — counts as success.
+ * Backend contract (main.py `_result_response`, trading.py `execute_command`):
+ *   { success, data: { success, status, error: {code, message}, data: {...} } }
+ * HTTP 200 is used for every well-formed outcome INCLUDING rejected / failed /
+ * partial / uncertain, so the inner `status` decides — never the HTTP code.
+ * Protection endpoints return the plain envelope { success, data: <row> }.
  */
-function interpret(result: unknown): { ok: true; note: string | null } | { ok: false; message: string } {
-  if (!result || typeof result !== "object") return { ok: true, note: null };
-  const r = result as { status?: unknown; data?: { retcode_description?: unknown }; requested?: unknown; succeeded?: unknown; error?: unknown };
-  const reason = typeof r.data?.retcode_description === "string" ? r.data.retcode_description : null;
-  const bulk =
-    typeof r.requested === "number" && typeof r.succeeded === "number" ? `${r.succeeded} of ${r.requested} succeeded` : null;
-  if (typeof r.status === "string") {
-    const status = r.status.toLowerCase();
-    if (status === "rejected" || status === "failed" || status === "error") {
-      return { ok: false, message: `Rejected by the server${reason ? `: ${reason}` : ""}${bulk ? ` (${bulk})` : ""}` };
-    }
-    if (status !== "completed") return { ok: true, note: `Server status: ${r.status}${bulk ? ` · ${bulk}` : ""}` };
+type Verdict =
+  | { kind: "ok"; note: string | null }
+  | { kind: "error"; message: string }
+  | { kind: "uncertain"; message: string };
+
+export function interpret(response: unknown): Verdict {
+  if (!response || typeof response !== "object") return { kind: "ok", note: null };
+  const env = response as { success?: unknown; data?: unknown };
+  const r = (env.data && typeof env.data === "object" ? env.data : {}) as CommandResult;
+  const status = typeof r.status === "string" ? r.status : null;
+  if (!status) {
+    // Not a trading command (e.g. protection): trust the envelope's success flag.
+    return env.success === false ? { kind: "error", message: "The server reported a failure." } : { kind: "ok", note: null };
   }
-  return { ok: true, note: bulk };
+  const reason =
+    (typeof r.error?.message === "string" && r.error.message) ||
+    (typeof r.data?.retcode_description === "string" && r.data.retcode_description) ||
+    null;
+  const bulk =
+    typeof r.data?.requested === "number" && typeof r.data?.succeeded === "number"
+      ? `${r.data.succeeded} of ${r.data.requested} succeeded`
+      : null;
+  switch (status) {
+    case "completed":
+      return { kind: "ok", note: bulk };
+    case "uncertain":
+      return { kind: "uncertain", message: reason ?? "Execution status unknown." };
+    case "partial":
+      return { kind: "error", message: `Partly completed — ${bulk ?? "some operations failed"}. Check positions.` };
+    case "rejected":
+    case "failed":
+    case "error":
+      return { kind: "error", message: `${status === "rejected" ? "Rejected" : "Failed"}${reason ? `: ${reason}` : ""}${bulk ? ` (${bulk})` : ""}` };
+    default:
+      return { kind: "error", message: `Unexpected server status "${status}". Check positions and commands.` };
+  }
 }
 
 /**
@@ -61,9 +90,16 @@ export function useAction<Args extends unknown[]>(
       try {
         const result = await run(requestId, ...args);
         const verdict = interpret(result);
-        if (verdict.ok) setState({ phase: "success", result, note: verdict.note });
-        else setState({ phase: "error", error: new ApiError(200, "COMMAND_REJECTED", verdict.message) });
-        await refresh(REFRESH_AFTER[kind]);
+        if (verdict.kind === "ok") {
+          setState({ phase: "success", result, note: verdict.note });
+          await refresh(REFRESH_AFTER[kind]);
+        } else if (verdict.kind === "uncertain") {
+          setState({ phase: "uncertain", error: new ApiError(200, "OUTCOME_UNKNOWN", verdict.message, true) });
+          await refresh(["commands", "positions", "orders", "account"]);
+        } else {
+          setState({ phase: "error", error: new ApiError(200, "COMMAND_REJECTED", verdict.message) });
+          await refresh(REFRESH_AFTER[kind]);
+        }
       } catch (e) {
         const error = e instanceof ApiError ? e : new ApiError(0, "UNKNOWN", "Unexpected error");
         if (error.uncertain) {

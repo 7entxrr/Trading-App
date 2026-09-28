@@ -6,7 +6,7 @@ import { Sheet } from "./Sheet";
 import { closePosition, modifyPosition } from "@/lib/api/goldminer";
 import { ApiError } from "@/lib/api/errors";
 import { usePositions } from "@/lib/api/hooks";
-import { lots, money, num, price, time } from "@/lib/format";
+import { lots, money, price, time } from "@/lib/format";
 import type { Position } from "@/lib/models";
 
 /**
@@ -53,7 +53,8 @@ export function PositionSheet({
         ["Take profit", price(p.tp)],
         ["Profit", money(p.profit, currency)],
         ["Swap", money(p.swap, currency)],
-        ["Magic", num(p.magic, 0)],
+        ["Source", p.isGoldminer === null ? "—" : p.isGoldminer ? "GoldMiner EA" : "Other / manual"],
+        ["Magic", p.magic === null ? "—" : String(p.magic)],
         ["Opened", time(p.openTime)],
         ["Comment", p.comment || "—"],
       ]
@@ -97,7 +98,7 @@ export function PositionSheet({
         open={confirm === "modify"}
         onClose={() => setConfirm(null)}
         title={`Edit TP/SL · #${ticket ?? ""}`}
-        body={<p>Set a new stop loss and/or take profit for this position only.</p>}
+        body={<p>Set a new stop loss and/or take profit for this position only. Leave a field empty to keep its current value.</p>}
         fields={[
           { key: "sl", label: "Stop loss", optional: true, initial: p?.sl != null ? String(p.sl) : "" },
           { key: "tp", label: "Take profit", optional: true, initial: p?.tp != null ? String(p.tp) : "" },

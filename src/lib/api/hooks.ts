@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { ApiError } from "./errors";
+import { ApiError } from "./errors";
 import { useLive, type LiveKey } from "./live";
 import * as m from "./mappers";
 
@@ -21,17 +21,19 @@ function useResource<T>(key: LiveKey, mapper: (raw: unknown) => T): Resource<T> 
   return useMemo(() => {
     let data: T | undefined;
     let unmapped = false;
+    let mapError: ApiError | undefined;
     if (entry?.data !== undefined) {
       try {
         data = mapper(entry.data);
       } catch (e) {
         if (e instanceof m.UnmappedError) unmapped = true;
-        else throw e;
+        // Never crash a screen on an unexpected response; show it as an error instead.
+        else mapError = new ApiError(0, "BAD_RESPONSE", "Unexpected response format from the server");
       }
     }
     return {
       data,
-      error: entry?.error,
+      error: entry?.error ?? mapError,
       loading: !entry || (entry.loading && entry.data === undefined && !entry.error),
       unmapped,
       updatedAt: entry?.updatedAt,

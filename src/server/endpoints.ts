@@ -10,6 +10,12 @@ type Rule = {
   pattern: RegExp;
   /** Mutating trading requests must carry a client-generated request_id. */
   requiresRequestId?: boolean;
+  /**
+   * Body field that must be a positive number. Used for bulk TP/SL: the
+   * backend treats a missing/null price as "REMOVE TP/SL from every matching
+   * position", which this app never intends to send.
+   */
+  requiresPositive?: "tp" | "sl";
 };
 
 const TICKET = "(\\d+)";
@@ -37,12 +43,12 @@ export const RULES: Rule[] = [
   // Single position
   { method: "POST", pattern: new RegExp(`^api/positions/${TICKET}/(modify|close)$`), requiresRequestId: true },
 
-  // Bulk TP / SL / close
-  {
-    method: "POST",
-    pattern: /^api\/positions\/(tp-buy|tp-sell|tp-all|sl-buy|sl-sell|sl-all|close-buy|close-sell|close-all)$/,
-    requiresRequestId: true,
-  },
+  // Bulk TP / SL (a real price is mandatory — see requiresPositive)
+  { method: "POST", pattern: /^api\/positions\/tp-(buy|sell|all)$/, requiresRequestId: true, requiresPositive: "tp" },
+  { method: "POST", pattern: /^api\/positions\/sl-(buy|sell|all)$/, requiresRequestId: true, requiresPositive: "sl" },
+
+  // Bulk close
+  { method: "POST", pattern: /^api\/positions\/close-(buy|sell|all)$/, requiresRequestId: true },
 
   // Pending orders
   { method: "POST", pattern: /^api\/orders\/(cancel-buy|cancel-sell|cancel-all)$/, requiresRequestId: true },

@@ -8,7 +8,7 @@ import { useTradingEnabled } from "./AuthGate";
 import * as gm from "@/lib/api/goldminer";
 import { useLiveRefresh, type REFRESH_AFTER } from "@/lib/api/live";
 import { useOrders, usePositions, useProtection } from "@/lib/api/hooks";
-import { lots, money, time } from "@/lib/format";
+import { lots, money, num, time } from "@/lib/format";
 import type { Position, ProtectionRule, Side } from "@/lib/models";
 
 type Summary = { count: number; lots: number };
@@ -138,18 +138,25 @@ export function ControlsSheet({ open, onClose }: { open: boolean; onClose: () =>
       run: (request_id, v) => gm.setTpSell({ request_id, tp: v.tp! }),
     },
     "tp-all": {
-      title: "Set TP for all positions",
-      body: <p>BUY and SELL use separate prices. Leave one empty to skip that side.</p>,
-      fields: [
-        { key: "buy_tp", label: "BUY take profit", optional: true },
-        { key: "sell_tp", label: "SELL take profit", optional: true },
-      ],
-      atLeastOne: ["buy_tp", "sell_tp"],
-      confirmLabel: "Set TP",
+      title: "Set TP for ALL positions",
+      body: (
+        <div className="space-y-2">
+          <p>
+            Applies ONE take-profit price to {counts(buy, "BUY")} and {counts(sell, "SELL")}.
+          </p>
+          <p className="font-semibold text-[#E5484D]">
+            The server uses the same price for BUY and SELL. A price above the market suits BUY positions but is invalid for
+            SELL positions (and vice-versa), so those will be rejected. Use TP BUY / TP SELL for separate prices.
+          </p>
+        </div>
+      ),
+      fields: [{ key: "tp", label: "Take profit price (all positions)" }],
+      confirmLabel: "Set TP on all",
       runningLabel: "Updating…",
+      danger: true,
       unavailable: posUnavailable,
       kind: "tpsl",
-      run: (request_id, v) => gm.setTpAll({ request_id, buy_tp: v.buy_tp, sell_tp: v.sell_tp }),
+      run: (request_id, v) => gm.setTpAll({ request_id, tp: v.tp! }),
     },
     "sl-buy": {
       title: "Set SL for BUY positions",
@@ -172,18 +179,25 @@ export function ControlsSheet({ open, onClose }: { open: boolean; onClose: () =>
       run: (request_id, v) => gm.setSlSell({ request_id, sl: v.sl! }),
     },
     "sl-all": {
-      title: "Set SL for all positions",
-      body: <p>BUY and SELL use separate prices. Leave one empty to skip that side.</p>,
-      fields: [
-        { key: "buy_sl", label: "BUY stop loss", optional: true },
-        { key: "sell_sl", label: "SELL stop loss", optional: true },
-      ],
-      atLeastOne: ["buy_sl", "sell_sl"],
-      confirmLabel: "Set SL",
+      title: "Set SL for ALL positions",
+      body: (
+        <div className="space-y-2">
+          <p>
+            Applies ONE stop-loss price to {counts(buy, "BUY")} and {counts(sell, "SELL")}.
+          </p>
+          <p className="font-semibold text-[#E5484D]">
+            The server uses the same price for BUY and SELL. A price below the market suits BUY positions but is invalid for
+            SELL positions (and vice-versa), so those will be rejected. Use SL BUY / SL SELL for separate prices.
+          </p>
+        </div>
+      ),
+      fields: [{ key: "sl", label: "Stop loss price (all positions)" }],
+      confirmLabel: "Set SL on all",
       runningLabel: "Updating…",
+      danger: true,
       unavailable: posUnavailable,
       kind: "tpsl",
-      run: (request_id, v) => gm.setSlAll({ request_id, buy_sl: v.buy_sl, sell_sl: v.sell_sl }),
+      run: (request_id, v) => gm.setSlAll({ request_id, sl: v.sl! }),
     },
     "cancel-buy": {
       title: "Cancel BUY pending orders?",
@@ -214,12 +228,12 @@ export function ControlsSheet({ open, onClose }: { open: boolean; onClose: () =>
     },
     "prot-tp-set": {
       title: "Set account equity TP",
-      body: <p>When account equity reaches the target, the server closes all positions.</p>,
-      fields: [{ key: "target", label: "Equity target" }],
+      body: <p>When account equity reaches this amount, the server closes all positions and cancels all pending orders.</p>,
+      fields: [{ key: "target", label: "Equity target (account currency)" }],
       confirmLabel: "Enable equity TP",
       runningLabel: "Saving…",
       kind: "protection",
-      run: (_id, v) => gm.setEquityTp({ enabled: true, mode: "equity", target: v.target!, action: "close_all" }),
+      run: (_id, v) => gm.setEquityTp({ enabled: true, mode: "equity_amount", target: v.target!, action: "close_all", client_id: "web-app" }),
     },
     "prot-tp-remove": {
       title: "Remove account equity TP?",
@@ -232,12 +246,12 @@ export function ControlsSheet({ open, onClose }: { open: boolean; onClose: () =>
     },
     "prot-sl-set": {
       title: "Set account equity SL",
-      body: <p>When account equity falls to the target, the server closes all positions.</p>,
-      fields: [{ key: "target", label: "Equity target" }],
+      body: <p>When account equity falls to this amount, the server closes all positions and cancels all pending orders.</p>,
+      fields: [{ key: "target", label: "Equity target (account currency)" }],
       confirmLabel: "Enable equity SL",
       runningLabel: "Saving…",
       kind: "protection",
-      run: (_id, v) => gm.setEquitySl({ enabled: true, mode: "equity", target: v.target!, action: "close_all" }),
+      run: (_id, v) => gm.setEquitySl({ enabled: true, mode: "equity_amount", target: v.target!, action: "close_all", client_id: "web-app" }),
     },
     "prot-sl-remove": {
       title: "Remove account equity SL?",
@@ -405,7 +419,9 @@ function ProtectionCard({
           {!known ? "Unknown" : rule?.triggered ? "Triggered" : active ? "On" : "Off"}
         </span>
       </div>
-      <p className="mt-1 text-[17px] font-bold text-[#131313]">{money(rule?.target)}</p>
+      <p className="mt-1 text-[17px] font-bold text-[#131313]">
+        {rule?.mode === "equity_percent" && rule.target != null ? `${num(rule.target)}% of balance` : money(rule?.target)}
+      </p>
       {rule?.current != null && <p className="text-[12px] text-[#8B8B8B]">Now {money(rule.current)}</p>}
       {rule?.triggeredAt && <p className="text-[12px] text-[#8B8B8B]">At {time(rule.triggeredAt)}</p>}
       {rule?.executionStatus && <p className="text-[12px] text-[#8B8B8B]">{rule.executionStatus}</p>}

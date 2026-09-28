@@ -10,7 +10,7 @@ import { GoldLogo } from "./GoldLogo";
 import { PriceChart } from "./PriceChart";
 import { BellIcon, ChevronDown, CoinsIcon } from "./icons";
 import { buy, sell } from "@/lib/api/goldminer";
-import { useAccount, useBaskets, useMarket, useOrders } from "@/lib/api/hooks";
+import { useAccount, useBaskets, useMarket, useOrders, useStatus } from "@/lib/api/hooks";
 import { lots, money, num, price, time } from "@/lib/format";
 import { ranges, toSeries, type Range } from "@/lib/series";
 
@@ -29,7 +29,8 @@ export function GoldDetail() {
   const account = useAccount();
   const quote = market.data;
   const series = useMemo(() => toSeries(quote?.history, range), [quote?.history, range]);
-  const shown = quote?.bid ?? null;
+  // BUY positions report the bid, SELL positions the ask (MT5 price_current).
+  const shown = quote?.bid ?? quote?.ask ?? null;
 
   return (
     <div className="screen-in flex min-h-[calc(100dvh-76px)] flex-col bg-white pt-[max(16px,env(safe-area-inset-top))]">
@@ -77,6 +78,8 @@ export function GoldDetail() {
             <Change value={quote.change} colored className="text-[15px]" format={(v) => price(v)} />
           ) : quote?.ask != null ? (
             <span className="text-[14px] text-[#8B8B8B]">Ask {price(quote.ask)}</span>
+          ) : quote && shown === null ? (
+            <span className="text-[13px] text-[#8B8B8B]">Live price is shown while a gold position is open</span>
           ) : null}
         </div>
       </div>
@@ -191,6 +194,7 @@ function Grid({ rows }: { rows: [string, string][] }) {
 /** GET /api/account figures */
 function Statistics() {
   const account = useAccount();
+  const st = useStatus().data;
   const a = account.data;
   const c = a?.currency;
   if (!a) return <DataNotice className="mt-6" resource={account} />;
@@ -206,8 +210,9 @@ function Statistics() {
         ["Leverage", a.leverage === null ? "—" : `1:${num(a.leverage, 0)}`],
         ["Trading allowed", yesNo(a.tradeAllowed)],
         ["EA trading", yesNo(a.tradeExpert)],
-        ["Trading window", a.tradingWindow ?? "—"],
-        ["Multiplier / slab", [a.multiplier === null ? null : `×${num(a.multiplier)}`, a.slab].filter(Boolean).join(" · ") || "—"],
+        ["Balance multiplier", st?.multiplier == null ? "—" : `×${num(st.multiplier)}`],
+        ["Balance slab", st?.slab ?? "—"],
+        ["Broker", a.broker ?? "—"],
         ["Server", a.server ?? "—"],
         ["Updated", time(a.timestamp)],
       ]}

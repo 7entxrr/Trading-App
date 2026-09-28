@@ -58,10 +58,16 @@ async function handle(req: NextRequest, ctx: RouteContext<"/api/gm/[...path]">) 
         return error(400, "BAD_JSON", "Invalid request body.");
       }
     }
+    const parsed = body ? JSON.parse(body) : null;
     if (rule.requiresRequestId) {
-      const parsed = body ? JSON.parse(body) : null;
       if (!parsed || typeof parsed.request_id !== "string" || !parsed.request_id) {
         return error(400, "MISSING_REQUEST_ID", "Missing request_id.");
+      }
+    }
+    if (rule.requiresPositive) {
+      const v = parsed?.[rule.requiresPositive];
+      if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) {
+        return error(400, "PRICE_REQUIRED", `A positive ${rule.requiresPositive.toUpperCase()} price is required.`);
       }
     }
   }
