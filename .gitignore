@@ -44,3 +44,7 @@ next-env.d.ts
 # API discovery output (may reveal account structure; share deliberately)
 api-shapes.json
 api-openapi.json
+
+# Deployment secrets (holds the API token) — never commit
+deploy/dashboard.env
+*.env

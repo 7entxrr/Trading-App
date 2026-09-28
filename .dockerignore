@@ -8,3 +8,4 @@ api-openapi.json
 Dockerfile
 deploy
 README.md
+deploy/dashboard.env
