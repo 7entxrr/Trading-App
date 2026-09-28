@@ -6,7 +6,7 @@ import { Change } from "./Change";
 import { PriceChart } from "./PriceChart";
 import { money, splitMoney } from "@/lib/format";
 import { makeSeries, ranges, type Range } from "@/lib/series";
-import { closedTrades, gold, positionPnl, positions, user } from "@/lib/data";
+import { closedTrades, positionPnl, positions, user } from "@/lib/data";
 
 function signed(v: number) {
   return `${v >= 0 ? "+" : "−"}${money(Math.abs(v))}`;
@@ -98,29 +98,6 @@ export function AnalyticsView() {
         })}
       </ul>
 
-      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Recent trades</h2>
-      <ul className="mt-2 divide-y divide-[#F0F0F0]">
-        {closedTrades.map((t) => (
-          <li key={t.id} className="flex items-center gap-3 py-3">
-            <span
-              className={`grid h-10 w-10 place-items-center rounded-full text-[12px] font-bold ${
-                t.side === "buy" ? "bg-[#EAF0FF] text-[#2966FF]" : "bg-[#EDEDED] text-[#131313]"
-              }`}
-            >
-              {t.side === "buy" ? "BUY" : "SELL"}
-            </span>
-            <div className="flex-1">
-              <p className="text-[15px] font-semibold text-[#131313]">
-                {gold.pair} · {t.lots.toFixed(2)} lot
-              </p>
-              <p className="text-[13px] text-[#8B8B8B]">
-                {money(t.open)} → {money(t.close)} · {t.time}
-              </p>
-            </div>
-            <p className={`text-[15px] font-bold ${t.pnl >= 0 ? "text-[#22B573]" : "text-[#E5484D]"}`}>{signed(t.pnl)}</p>
-          </li>
-        ))}
-      </ul>
     </>
   );
 }

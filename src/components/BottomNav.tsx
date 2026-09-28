@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnalyticsIcon, BagIcon, ChatIcon, HomeIcon } from "./icons";
+import { AnalyticsIcon, BagIcon, HistoryIcon, HomeIcon } from "./icons";
 
 const items = [
   { href: "/", label: "Home", Icon: HomeIcon },
   { href: "/market", label: "Market", Icon: BagIcon },
   { href: "/analytics", label: "Analytics", Icon: AnalyticsIcon },
-  { href: "/chat", label: "Chat", Icon: ChatIcon },
+  { href: "/history", label: "History", Icon: HistoryIcon },
 ] as const;
 
 export function BottomNav() {

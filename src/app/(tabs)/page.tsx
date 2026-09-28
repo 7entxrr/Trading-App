@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="mx-auto h-1 w-10 rounded-full bg-[#E7E7E7]" />
         <div className="mt-5 flex items-center justify-between px-1">
           <h2 className="text-[24px] font-bold text-[#131313]">Positions</h2>
-          <Link href="/analytics" className="text-[15px] font-medium text-[#2966FF] active:opacity-60">
+          <Link href="/history" className="text-[15px] font-medium text-[#2966FF] active:opacity-60">
             View all
           </Link>
         </div>

@@ -74,6 +74,9 @@ export const closedTrades = [
   { id: "48171", side: "buy", lots: 0.15, open: 3355.9, close: 3349.4, time: "Yesterday" },
   { id: "48160", side: "buy", lots: 0.25, open: 3322.4, close: 3347.6, time: "Yesterday" },
   { id: "48142", side: "sell", lots: 0.1, open: 3339.0, close: 3344.7, time: "Mon" },
+  { id: "48133", side: "buy", lots: 0.3, open: 3318.6, close: 3331.9, time: "Mon" },
+  { id: "48119", side: "sell", lots: 0.2, open: 3345.2, close: 3329.8, time: "Sep 19" },
+  { id: "48104", side: "buy", lots: 0.05, open: 3327.3, close: 3321.1, time: "Sep 18" },
 ].map((t) => ({
   ...t,
   pnl: (t.close - t.open) * (t.side === "buy" ? 1 : -1) * t.lots * OZ_PER_LOT,
@@ -85,64 +88,9 @@ export const notifications = [
   { id: 3, title: "Gold reached your target $3,380", time: "Yesterday", unread: false },
 ];
 
-export type Chat = {
-  id: string;
-  name: string;
-  avatar: string;
-  color: string;
-  last: string;
-  time: string;
-  unread: number;
-  messages: { from: "me" | "them"; text: string; time: string }[];
-};
-
-export const chats: Chat[] = [
-  {
-    id: "support",
-    name: "Support Team",
-    avatar: "S",
-    color: "#2966FF",
-    last: "Your withdrawal is on its way 🚀",
-    time: "10:24",
-    unread: 2,
-    messages: [
-      { from: "me", text: "Hi, when will my withdrawal arrive?", time: "10:18" },
-      { from: "them", text: "Hi Andrew! Let me check that for you.", time: "10:20" },
-      { from: "them", text: "Your withdrawal is on its way 🚀", time: "10:24" },
-    ],
-  },
-  {
-    id: "advisor",
-    name: "Emma — Advisor",
-    avatar: "E",
-    color: "#22B573",
-    last: "Gold looks strong above $3,350.",
-    time: "09:02",
-    unread: 0,
-    messages: [
-      { from: "them", text: "Morning! Did you see the Fed minutes?", time: "08:55" },
-      { from: "me", text: "Yes, gold jumped right after.", time: "08:59" },
-      { from: "them", text: "Gold looks strong above $3,350.", time: "09:02" },
-    ],
-  },
-  {
-    id: "alerts",
-    name: "Price Alerts",
-    avatar: "A",
-    color: "#E0A526",
-    last: "Gold crossed $3,380",
-    time: "Yesterday",
-    unread: 1,
-    messages: [{ from: "them", text: "Gold crossed $3,380", time: "18:40" }],
-  },
-  {
-    id: "community",
-    name: "Gold Traders Club",
-    avatar: "G",
-    color: "#131313",
-    last: "Anyone buying the dip today?",
-    time: "Mon",
-    unread: 0,
-    messages: [{ from: "them", text: "Anyone buying the dip today?", time: "16:12" }],
-  },
-];
+export const transfers = [
+  { id: "d-104", kind: "deposit", amount: 500, time: "Today, 07:30" },
+  { id: "w-088", kind: "withdraw", amount: 1200, time: "Sep 20" },
+  { id: "d-097", kind: "deposit", amount: 2500, time: "Sep 15" },
+  { id: "d-091", kind: "deposit", amount: 10000, time: "Sep 01" },
+] as const;

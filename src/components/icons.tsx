@@ -27,14 +27,6 @@ export function ChevronDown(p: P) {
   );
 }
 
-export function ChevronLeft(p: P) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" {...p}>
-      <path d="m14.5 6-6 6 6 6" />
-    </svg>
-  );
-}
-
 /** Filled circle with an up/down caret, as next to every change figure. */
 export function TrendDot({ up, className }: { up: boolean; className?: string }) {
   return (
@@ -88,23 +80,6 @@ export function CoinsIcon(p: P) {
   );
 }
 
-export function SearchIcon(p: P) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" {...p}>
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="m20 20-4.2-4.2" />
-    </svg>
-  );
-}
-
-export function SendIcon(p: P) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...p}>
-      <path d="M3.4 20.4 21 12 3.4 3.6l-.02 6.53L15 12 3.38 13.87z" />
-    </svg>
-  );
-}
-
 /* Bottom navigation icons (filled, rounded, as in the design). */
 
 export function HomeIcon(p: P) {
@@ -154,18 +129,11 @@ export function AnalyticsIcon(p: P) {
   );
 }
 
-export function ChatIcon(p: P) {
+export function HistoryIcon(p: P) {
   return (
     <svg viewBox="0 0 24 24" {...p}>
-      <path
-        fill="currentColor"
-        opacity={0.55}
-        d="M9 3h9a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-.5v2.2a.6.6 0 0 1-1 .45L13.5 15H9a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z"
-      />
-      <path
-        fill="currentColor"
-        d="M6 8h8a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3H9.5l-3 2.6a.6.6 0 0 1-1-.45V19H6a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3Z"
-      />
+      <circle cx="12" cy="12" r="9.5" fill="currentColor" />
+      <path d="M12 7.5V12l3 2" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
