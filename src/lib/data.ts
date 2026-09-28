@@ -1,157 +1,88 @@
 // Mock data. Replace with real API calls later.
 
-export type BrandKey =
-  | "shopify"
-  | "walmart"
-  | "adidas"
-  | "xiaomi"
-  | "apple"
-  | "tesla"
-  | "nike"
-  | "amazon";
-
-export type Stock = {
-  symbol: string;
-  ticker: string;
-  name: string;
-  brand: BrandKey;
-  sector: "Tech" | "Retail" | "Sports" | "Auto";
-  /** Current share price */
-  price: number;
-  /** Today's share price change */
-  priceChange: number;
-  /** Value of the user's holding */
-  holding: number;
-  /** Today's change in the holding's value */
-  holdingChange: number;
-  /** Card background gradient on the home screen */
-  gradient: string;
-  seed: number;
-};
-
 export const user = {
   name: "Andrew G.",
   balance: 23386,
   todayChange: 236.98,
 };
 
-export const stocks: Stock[] = [
+/** The one instrument this app trades: spot gold. */
+export const gold = {
+  symbol: "XAUUSD",
+  pair: "XAU/USD",
+  name: "Gold",
+  price: 3386.45,
+  change: 18.42,
+  seed: 11,
+};
+
+/** 1 standard lot of gold = 100 troy ounces. */
+const OZ_PER_LOT = 100;
+
+export type Position = {
+  id: string;
+  side: "buy" | "sell";
+  lots: number;
+  openPrice: number;
+  /** Card background gradient on the home screen */
+  gradient: string;
+};
+
+export const positions: Position[] = [
   {
-    symbol: "shop",
-    ticker: "SHOP",
-    name: "Shopify Inc",
-    brand: "shopify",
-    sector: "Tech",
-    price: 95.38,
-    priceChange: 12.18,
-    holding: 1085.8,
-    holdingChange: 12.98,
+    id: "48213",
+    side: "buy",
+    lots: 0.3,
+    openPrice: 3350.25,
     gradient: "linear-gradient(135deg, #e3efcf 0%, #edf4e2 55%, #e9f1dc 100%)",
-    seed: 11,
   },
   {
-    symbol: "wmt",
-    ticker: "WMT",
-    name: "Wal-Mart",
-    brand: "walmart",
-    sector: "Retail",
-    price: 68.42,
-    priceChange: 1.36,
-    holding: 204.13,
-    holdingChange: 32.98,
+    id: "48220",
+    side: "buy",
+    lots: 0.1,
+    openPrice: 3366.04,
     gradient: "linear-gradient(135deg, #e8f1f9 0%, #dde9f7 55%, #d2e2f6 100%)",
-    seed: 23,
   },
   {
-    symbol: "ads",
-    ticker: "ADS@DE",
-    name: "Adidas",
-    brand: "adidas",
-    sector: "Sports",
-    price: 212.6,
-    priceChange: -1.12,
-    holding: 162.72,
-    holdingChange: -1.12,
+    id: "48231",
+    side: "sell",
+    lots: 0.05,
+    openPrice: 3383.2,
     gradient: "linear-gradient(135deg, #d4d4d4 0%, #e0e0e0 50%, #ececec 100%)",
-    seed: 37,
   },
   {
-    symbol: "1810",
-    ticker: "1810",
-    name: "Xiaomi",
-    brand: "xiaomi",
-    sector: "Tech",
-    price: 4.86,
-    priceChange: 0.21,
-    holding: 159.89,
-    holdingChange: 35.76,
+    id: "48240",
+    side: "buy",
+    lots: 0.08,
+    openPrice: 3366.46,
     gradient: "linear-gradient(135deg, #f6eeea 0%, #f7e6dc 55%, #f9dccb 100%)",
-    seed: 41,
-  },
-  {
-    symbol: "aapl",
-    ticker: "AAPL",
-    name: "Apple Inc",
-    brand: "apple",
-    sector: "Tech",
-    price: 227.48,
-    priceChange: 3.27,
-    holding: 0,
-    holdingChange: 0,
-    gradient: "linear-gradient(135deg, #ececec 0%, #f5f5f5 100%)",
-    seed: 53,
-  },
-  {
-    symbol: "tsla",
-    ticker: "TSLA",
-    name: "Tesla Inc",
-    brand: "tesla",
-    sector: "Auto",
-    price: 254.22,
-    priceChange: -4.83,
-    holding: 0,
-    holdingChange: 0,
-    gradient: "linear-gradient(135deg, #f7e4e4 0%, #f9eeee 100%)",
-    seed: 67,
-  },
-  {
-    symbol: "nke",
-    ticker: "NKE",
-    name: "Nike Inc",
-    brand: "nike",
-    sector: "Sports",
-    price: 88.15,
-    priceChange: 0.94,
-    holding: 0,
-    holdingChange: 0,
-    gradient: "linear-gradient(135deg, #ececec 0%, #f5f5f5 100%)",
-    seed: 71,
-  },
-  {
-    symbol: "amzn",
-    ticker: "AMZN",
-    name: "Amazon.com",
-    brand: "amazon",
-    sector: "Retail",
-    price: 186.51,
-    priceChange: 2.05,
-    holding: 0,
-    holdingChange: 0,
-    gradient: "linear-gradient(135deg, #fbf0de 0%, #fcf5ea 100%)",
-    seed: 83,
   },
 ];
 
-export const portfolio = stocks.filter((s) => s.holding > 0);
-
-export function getStock(symbol: string) {
-  return stocks.find((s) => s.symbol === symbol.toLowerCase());
+/** Price move in the position's favour since it was opened. */
+export function positionMove(p: Position, price = gold.price) {
+  return (price - p.openPrice) * (p.side === "buy" ? 1 : -1);
 }
 
+export function positionPnl(p: Position, price = gold.price) {
+  return positionMove(p, price) * p.lots * OZ_PER_LOT;
+}
+
+export const closedTrades = [
+  { id: "48198", side: "buy", lots: 0.2, open: 3341.1, close: 3362.8, time: "Today, 09:42" },
+  { id: "48187", side: "sell", lots: 0.1, open: 3371.5, close: 3358.2, time: "Today, 08:15" },
+  { id: "48171", side: "buy", lots: 0.15, open: 3355.9, close: 3349.4, time: "Yesterday" },
+  { id: "48160", side: "buy", lots: 0.25, open: 3322.4, close: 3347.6, time: "Yesterday" },
+  { id: "48142", side: "sell", lots: 0.1, open: 3339.0, close: 3344.7, time: "Mon" },
+].map((t) => ({
+  ...t,
+  pnl: (t.close - t.open) * (t.side === "buy" ? 1 : -1) * t.lots * OZ_PER_LOT,
+}));
+
 export const notifications = [
-  { id: 1, title: "Shopify is up 14.6% today", time: "2m ago", unread: true },
+  { id: 1, title: "Gold is up 0.55% today", time: "2m ago", unread: true },
   { id: 2, title: "Deposit of $500.00 completed", time: "1h ago", unread: true },
-  { id: 3, title: "Xiaomi reached your target price", time: "Yesterday", unread: false },
+  { id: 3, title: "Gold reached your target $3,380", time: "Yesterday", unread: false },
 ];
 
 export type Chat = {
@@ -185,33 +116,33 @@ export const chats: Chat[] = [
     name: "Emma — Advisor",
     avatar: "E",
     color: "#22B573",
-    last: "Shopify looks strong this quarter.",
+    last: "Gold looks strong above $3,350.",
     time: "09:02",
     unread: 0,
     messages: [
-      { from: "them", text: "Morning! Did you see the earnings report?", time: "08:55" },
-      { from: "me", text: "Yes, looks promising.", time: "08:59" },
-      { from: "them", text: "Shopify looks strong this quarter.", time: "09:02" },
+      { from: "them", text: "Morning! Did you see the Fed minutes?", time: "08:55" },
+      { from: "me", text: "Yes, gold jumped right after.", time: "08:59" },
+      { from: "them", text: "Gold looks strong above $3,350.", time: "09:02" },
     ],
   },
   {
     id: "alerts",
     name: "Price Alerts",
     avatar: "A",
-    color: "#FF6900",
-    last: "Xiaomi crossed $4.80",
+    color: "#E0A526",
+    last: "Gold crossed $3,380",
     time: "Yesterday",
     unread: 1,
-    messages: [{ from: "them", text: "Xiaomi crossed $4.80", time: "18:40" }],
+    messages: [{ from: "them", text: "Gold crossed $3,380", time: "18:40" }],
   },
   {
     id: "community",
-    name: "Investors Club",
-    avatar: "I",
+    name: "Gold Traders Club",
+    avatar: "G",
     color: "#131313",
-    last: "Anyone watching Tesla today?",
+    last: "Anyone buying the dip today?",
     time: "Mon",
     unread: 0,
-    messages: [{ from: "them", text: "Anyone watching Tesla today?", time: "16:12" }],
+    messages: [{ from: "them", text: "Anyone buying the dip today?", time: "16:12" }],
   },
 ];

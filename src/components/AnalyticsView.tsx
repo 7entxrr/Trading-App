@@ -1,21 +1,34 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BrandLogo } from "./BrandLogo";
+import { GoldLogo } from "./GoldLogo";
 import { Change } from "./Change";
 import { PriceChart } from "./PriceChart";
 import { money, splitMoney } from "@/lib/format";
 import { makeSeries, ranges, type Range } from "@/lib/series";
-import { portfolio, user } from "@/lib/data";
+import { closedTrades, gold, positionPnl, positions, user } from "@/lib/data";
 
-const COLORS = ["#95BF47", "#2966FF", "#131313", "#FF6900"];
+function signed(v: number) {
+  return `${v >= 0 ? "+" : "−"}${money(Math.abs(v))}`;
+}
 
 export function AnalyticsView() {
   const [range, setRange] = useState<Range>("7d");
   const series = useMemo(() => makeSeries(97, user.balance, range), [range]);
   const [whole, cents] = splitMoney(user.balance);
-  const total = portfolio.reduce((a, s) => a + s.holding, 0);
-  const best = [...portfolio].sort((a, b) => b.holdingChange - a.holdingChange);
+
+  const wins = closedTrades.filter((t) => t.pnl > 0).length;
+  const net = closedTrades.reduce((a, t) => a + t.pnl, 0);
+  const best = Math.max(...closedTrades.map((t) => t.pnl));
+  const openPnl = positions.reduce((a, p) => a + positionPnl(p), 0);
+  const stats = [
+    ["Win rate", `${Math.round((wins / closedTrades.length) * 100)}%`],
+    ["Closed trades", String(closedTrades.length)],
+    ["Net P/L", signed(net)],
+    ["Best trade", signed(best)],
+    ["Open P/L", signed(openPnl)],
+    ["Open positions", String(positions.length)],
+  ];
 
   return (
     <>
@@ -31,7 +44,7 @@ export function AnalyticsView() {
         </div>
       </div>
 
-      <div className="-mx-5 mt-4">
+      <div className="-ml-5 mt-4">
         <PriceChart series={series} />
       </div>
       <div className="mt-5 grid grid-cols-4 gap-2">
@@ -48,35 +61,63 @@ export function AnalyticsView() {
         ))}
       </div>
 
-      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Allocation</h2>
-      <div className="mt-3 flex h-3 overflow-hidden rounded-full">
-        {portfolio.map((s, i) => (
-          <div key={s.symbol} style={{ width: `${(s.holding / total) * 100}%`, background: COLORS[i] }} />
+      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Performance</h2>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {stats.map(([k, v]) => (
+          <div key={k} className="rounded-[16px] bg-[#F4F6FB] px-4 py-3">
+            <p className="text-[13px] text-[#8B8B8B]">{k}</p>
+            <p
+              className={`mt-1 text-[17px] font-semibold ${
+                v.startsWith("+") ? "text-[#22B573]" : v.startsWith("−") ? "text-[#E5484D]" : "text-[#131313]"
+              }`}
+            >
+              {v}
+            </p>
+          </div>
         ))}
       </div>
-      <ul className="mt-4 grid grid-cols-2 gap-3">
-        {portfolio.map((s, i) => (
-          <li key={s.symbol} className="flex items-center gap-2 text-[14px] text-[#131313]">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i] }} />
-            <span className="flex-1 truncate">{s.name}</span>
-            <span className="font-semibold">{((s.holding / total) * 100).toFixed(1)}%</span>
-          </li>
-        ))}
+
+      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Open positions</h2>
+      <ul className="mt-3 space-y-3">
+        {positions.map((p) => {
+          const pnl = positionPnl(p);
+          return (
+            <li key={p.id} className="flex items-center gap-3 rounded-[18px] p-3" style={{ background: p.gradient }}>
+              <GoldLogo size={38} />
+              <div className="flex-1">
+                <p className="text-[15px] font-semibold text-[#131313]">
+                  {p.side === "buy" ? "Buy" : "Sell"} {p.lots.toFixed(2)} lot
+                </p>
+                <p className="text-[13px] text-[#8B8B8B]">
+                  #{p.id} · open {money(p.openPrice)}
+                </p>
+              </div>
+              <p className={`text-[15px] font-bold ${pnl >= 0 ? "text-[#22B573]" : "text-[#E5484D]"}`}>{signed(pnl)}</p>
+            </li>
+          );
+        })}
       </ul>
 
-      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Top performers</h2>
-      <ul className="mt-3 space-y-3">
-        {best.map((s) => (
-          <li key={s.symbol} className="flex items-center gap-3 rounded-[18px] p-3" style={{ background: s.gradient }}>
-            <BrandLogo brand={s.brand} size={38} />
+      <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Recent trades</h2>
+      <ul className="mt-2 divide-y divide-[#F0F0F0]">
+        {closedTrades.map((t) => (
+          <li key={t.id} className="flex items-center gap-3 py-3">
+            <span
+              className={`grid h-10 w-10 place-items-center rounded-full text-[12px] font-bold ${
+                t.side === "buy" ? "bg-[#EAF0FF] text-[#2966FF]" : "bg-[#EDEDED] text-[#131313]"
+              }`}
+            >
+              {t.side === "buy" ? "BUY" : "SELL"}
+            </span>
             <div className="flex-1">
-              <p className="text-[15px] font-semibold text-[#131313]">{s.name}</p>
-              <p className="text-[13px] text-[#8B8B8B]">{s.ticker}</p>
+              <p className="text-[15px] font-semibold text-[#131313]">
+                {gold.pair} · {t.lots.toFixed(2)} lot
+              </p>
+              <p className="text-[13px] text-[#8B8B8B]">
+                {money(t.open)} → {money(t.close)} · {t.time}
+              </p>
             </div>
-            <div className="text-right text-[#131313]">
-              <p className="text-[15px] font-bold">{money(s.holding)}</p>
-              <Change value={s.holdingChange} className="text-[13px]" />
-            </div>
+            <p className={`text-[15px] font-bold ${t.pnl >= 0 ? "text-[#22B573]" : "text-[#E5484D]"}`}>{signed(t.pnl)}</p>
           </li>
         ))}
       </ul>

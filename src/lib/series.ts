@@ -9,8 +9,8 @@ export const ranges: { key: Range; label: string }[] = [
 
 export type Series = { values: number[]; labels: string[]; defaultIndex: number };
 
-// Hand-traced from the design so Shopify's 24h chart matches it exactly.
-const SHOPIFY_24H = [
+// Hand-traced from the design so the 24h chart matches the mock-up exactly.
+const DESIGN_24H = [
   0.6, 0.64, 0.62, 0.3, 0.29, 0.05, 0.14, 0.1, 0.19, 0.14, 0.23, 0.21, 0.26, 0.18, 0.24, 0.34,
   0.36, 0.33, 0.24, 0.31, 0.24, 0.3, 0.2, 0.31, 0.1, 0.24, 0.33, 0.362, 0.4, 0.44, 0.4, 0.45,
   0.62, 0.78, 0.88, 0.91, 0.87, 0.86, 0.66, 0.55, 0.6, 0.62, 0.54, 0.54, 0.59, 0.57, 0.62, 0.7,
@@ -48,10 +48,10 @@ function walk(seed: number, n: number) {
 
 export function makeSeries(seed: number, price: number, range: Range, useDesign = false): Series {
   const n = POINTS[range];
-  const shape = useDesign && range === "24h" ? SHOPIFY_24H : walk(seed * 7 + n, n);
-  // Map 0..1 to a price band. For the design series, 0.362 -> $65.34 like the mock-up.
-  const low = useDesign && range === "24h" ? 40 : price * 0.72;
-  const span = useDesign && range === "24h" ? 70 : price * 0.5;
+  const shape = useDesign && range === "24h" ? DESIGN_24H : walk(seed * 7 + n, n);
+  // Map 0..1 to a price band just around the current price.
+  const low = price * 0.985;
+  const span = price * 0.02;
   const values = shape.map((y) => Math.round((low + y * span) * 100) / 100);
   return {
     values,

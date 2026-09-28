@@ -8,8 +8,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Trading App",
-  description: "Track your portfolio and trade stocks.",
+  title: "Gold Trading",
+  description: "Trade and track gold (XAU/USD).",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Trading" },
 };
 
