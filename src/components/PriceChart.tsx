@@ -12,7 +12,7 @@ const PAD_TOP = 40; // room above the line for the tooltip
  * Area chart matching the design: blue line, soft blue gradient fill,
  * dashed guide line and a black price tooltip. Drag or tap to inspect.
  */
-export function PriceChart({ series }: { series: Series }) {
+export function PriceChart({ series, heightClass = "h-[260px]" }: { series: Series; heightClass?: string }) {
   const { values, labels, defaultIndex } = series;
   const [active, setActive] = useState(defaultIndex);
   const [lastSeries, setLastSeries] = useState(series);
@@ -52,7 +52,7 @@ export function PriceChart({ series }: { series: Series }) {
     <div>
       <div
         ref={ref}
-        className="relative h-[260px] w-full touch-pan-y select-none"
+        className={`relative w-full touch-pan-y select-none ${heightClass}`}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           pick(e.clientX);
@@ -106,7 +106,7 @@ export function PriceChart({ series }: { series: Series }) {
         </div>
       </div>
 
-      <div className="mt-3 flex justify-between text-[13px] font-medium text-[#8B8B8B]">
+      <div className="mt-3 flex justify-between pl-2 text-[13px] font-medium text-[#8B8B8B]">
         {labels.map((l, k) => (
           <span key={k} className="min-w-[1ch]">
             {l}

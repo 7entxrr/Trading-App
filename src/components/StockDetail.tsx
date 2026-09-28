@@ -72,8 +72,8 @@ export function StockDetail({ stock }: { stock: Stock }) {
       <div className="flex-1 px-6">
         {tab === "Overview" && (
           <>
-            <div className="mt-5 -mx-6 px-0">
-              <PriceChart series={series} />
+            <div className="mt-5 -ml-6">
+              <PriceChart series={series} heightClass="h-[clamp(220px,calc(100dvh-500px),380px)]" />
             </div>
             <div className="mt-6 grid grid-cols-4 gap-2">
               {ranges.map((r) => (
