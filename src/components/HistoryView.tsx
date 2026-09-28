@@ -41,15 +41,15 @@ export function HistoryView() {
             {list.map((t) => (
               <li key={t.id} className="flex items-center gap-3 py-3.5">
                 <span
-                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
-                    t.side === "buy" ? "bg-[#EAF0FF] text-[#2966FF]" : "bg-[#EDEDED] text-[#131313]"
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[9px] font-bold ${
+                    t.side === "buy" ? "bg-[#EAF0FF] text-[#2966FF]" : t.side === "sell" ? "bg-[#EDEDED] text-[#131313]" : "bg-[#FFF5E0] text-[#9A6400]"
                   }`}
                 >
-                  {t.side ? t.side.toUpperCase() : "—"}
+                  {t.typeLabel ?? "—"}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-[#131313]">
-                    {lots(t.volume)} lot · #{t.id}
+                    {t.side ? `${lots(t.volume)} lot · ` : ""}#{t.id}
                   </p>
                   <p className="truncate text-[13px] text-[#8B8B8B]">
                     @ {price(t.price)}

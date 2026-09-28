@@ -21,6 +21,16 @@ export interface SystemStatus {
   symbol: string | null;
   multiplier: number | null;
   slab: string | null;
+  tradingWindow: TradingWindow | null;
+}
+
+/** GoldMiner working window (logic.trading_window_state) — display only. */
+export interface TradingWindow {
+  active: boolean;
+  session: string | null;
+  timezone: string | null;
+  localTime: string | null;
+  sessions: { start: string; end: string }[];
 }
 
 export interface Account {
@@ -74,6 +84,8 @@ export interface PendingOrder {
 
 export interface Trade {
   id: string;
+  /** MT5 deal type label: BUY, SELL, BALANCE, CREDIT, … */
+  typeLabel: string | null;
   positionId: string | null;
   symbol: string | null;
   side: Side | null;
@@ -106,10 +118,9 @@ export interface TimePoint {
 export interface Performance {
   balance: TimePoint[];
   equity: TimePoint[];
-  profit: number | null;
-  drawdown: number | null;
-  /** Backend says it is still collecting history */
+  /** Backend says it is still collecting history (fewer than 2 snapshots) */
   collecting: boolean;
+  snapshotCount: number;
 }
 
 export interface Alert {

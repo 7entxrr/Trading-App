@@ -23,14 +23,12 @@ import type {
  * Raw GoldMiner API responses → app view models.
  *
  * Source of truth: the backend code (main.py, poller.py, trading.py,
- * mt5_bridge.py, schemas.py). Every field read below is one those files
- * return. Position / order objects are MetaTrader5 `TradePosition` /
- * `TradeOrder` named tuples converted with `_asdict()` (mt5_bridge.py).
- *
- * Mapped:   status, account, positions, orders, snapshot (quote), protection, commands
- * PENDING:  trades, performance, alerts, baskets — their row fields are built in
- *           database.py / logic.py, which have not been provided. They are
- *           NOT guessed; those screens show "awaiting response mapping".
+ * mt5_bridge.py, schemas.py, database.py, logic.py). Every field read below
+ * is one those files return:
+ *   - positions / orders: MetaTrader5 TradePosition / TradeOrder `_asdict()`
+ *   - trades, performance, alerts, commands, protection: SQLite rows
+ *     (`SELECT *`, see database.SCHEMA); timestamps are ISO-8601 UTC strings
+ *   - baskets, trading window, balance multiplier: logic.py
  *
  * Rules: missing values stay null (shown as "—"); numbers are kept exactly as
  * returned; MT5 uses 0.0 for "no SL/TP", which is mapped to null.
@@ -42,13 +40,6 @@ export class UnmappedError extends Error {
     this.name = "UnmappedError";
   }
 }
-
-const pending =
-  <T>(resource: string) =>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (raw: unknown): T => {
-    throw new UnmappedError(resource);
-  };
 
 /* ---------- helpers ---------- */
 
@@ -98,6 +89,8 @@ export function mapStatus(raw: unknown): SystemStatus {
     conn === "connected" ? (isStale ? "stale" : "connected") : conn === "disconnected" ? "disconnected" : "unknown";
   const bm = isObj(d.balance_multiplier) ? d.balance_multiplier : {};
   const slab = bm.current_balance_slab;
+  const ww = isObj(d.trading_window) ? d.trading_window : null;
+  const session = (v: unknown) => (isObj(v) && typeof v.start === "string" && typeof v.end === "string" ? [{ start: v.start, end: v.end }] : []);
   return {
     mt5,
     eaRunning: d.ea_detection_status === "detected" ? true : d.ea_detection_status === "undetected" ? false : null,
@@ -107,6 +100,15 @@ export function mapStatus(raw: unknown): SystemStatus {
     symbol: str(d.symbol),
     multiplier: num(bm.current_multiplier),
     slab: typeof slab === "string" || typeof slab === "number" ? String(slab) : null,
+    tradingWindow: ww
+      ? {
+          active: ww.active === true,
+          session: str(ww.current_session),
+          timezone: str(ww.timezone),
+          localTime: str(ww.local_time),
+          sessions: [...session(ww.session1), ...session(ww.session2)],
+        }
+      : null,
   };
 }
 
@@ -217,7 +219,7 @@ export function mapMarket(raw: unknown): Market {
 
 /* ---------- GET /api/protection ---------- */
 
-/** Row keys verified in poller.py: enabled, mode, target, triggered. */
+/** `protections` table row (database.py). */
 function toRule(v: unknown): ProtectionRule | null {
   if (!isObj(v)) return null;
   return {
@@ -225,11 +227,11 @@ function toRule(v: unknown): ProtectionRule | null {
     mode: str(v.mode),
     target: num(v.target),
     current: null,
-    action: null,
+    action: str(v.action),
     triggered: truthy(v.triggered),
-    executionStatus: null,
-    triggeredAt: null,
-    lastError: null,
+    executionStatus: str(v.execution_status),
+    triggeredAt: str(v.triggered_at),
+    lastError: str(v.last_error),
   };
 }
 
@@ -241,7 +243,7 @@ export function mapProtection(raw: unknown): Protection {
 
 /* ---------- GET /api/commands ---------- */
 
-/** Row keys verified in trading.py `_row_to_response`. The row's time column isn't known yet. */
+/** `trade_commands` table row (database.py). */
 export function mapCommands(raw: unknown): Command[] {
   const { data } = unwrap(raw);
   if (!Array.isArray(data)) return [];
@@ -255,22 +257,111 @@ export function mapCommands(raw: unknown): Command[] {
         id: requestId,
         action,
         status,
-        ticket: id(c.resulting_position_ticket),
+        ticket: id(c.ticket) ?? id(c.resulting_position_ticket),
         requestId,
-        time: null,
+        time: str(c.timestamp),
         message: str(c.error) ?? str(c.mt5_comment),
       },
     ];
   });
 }
 
-/* ---------- PENDING: need database.py / logic.py ---------- */
+/* ---------- GET /api/trades ---------- */
 
-/** GET /api/trades — rows from database.get_trade_history (database.py). */
-export const mapTrades = pending<Trade[]>("GET /api/trades");
-/** GET /api/performance — { status, snapshots } where snapshot rows come from database.py. */
-export const mapPerformance = pending<Performance>("GET /api/performance");
-/** GET /api/alerts — rows from database.get_recent_alerts (database.py). */
-export const mapAlerts = pending<Alert[]>("GET /api/alerts");
-/** GET /api/baskets — built by logic.compute_baskets (logic.py). */
-export const mapBaskets = pending<Basket[]>("GET /api/baskets");
+/** MT5 ENUM_DEAL_TYPE */
+const DEAL_TYPES: Record<number, string> = {
+  0: "BUY",
+  1: "SELL",
+  2: "BALANCE",
+  3: "CREDIT",
+  4: "CHARGE",
+  5: "CORRECTION",
+  6: "BONUS",
+  7: "COMMISSION",
+};
+
+/** `trade_history` rows (database.py): one row per MT5 deal, newest first. */
+export function mapTrades(raw: unknown): Trade[] {
+  const { data } = unwrap(raw);
+  if (!Array.isArray(data)) return [];
+  return data.filter(isObj).flatMap((t) => {
+    const dealId = id(t.deal_ticket) ?? id(t.id);
+    if (!dealId) return [];
+    const type = num(t.type);
+    return [
+      {
+        id: dealId,
+        typeLabel: type === null ? null : (DEAL_TYPES[type] ?? `TYPE ${type}`),
+        positionId: id(t.position_id),
+        symbol: str(t.symbol),
+        side: type === 0 ? "buy" : type === 1 ? "sell" : null,
+        volume: num(t.volume),
+        price: num(t.price),
+        profit: num(t.profit),
+        commission: num(t.commission),
+        swap: num(t.swap),
+        fee: num(t.fee),
+        magic: num(t.magic),
+        comment: str(t.comment),
+        time: str(t.time),
+      },
+    ];
+  });
+}
+
+/* ---------- GET /api/performance ---------- */
+
+/** { status: "ok" | "collecting_live_data", snapshots: performance_snapshots rows (newest first) } */
+export function mapPerformance(raw: unknown): Performance {
+  const { data } = unwrap(raw);
+  const d = isObj(data) ? data : {};
+  const rows = Array.isArray(d.snapshots) ? d.snapshots.filter(isObj) : [];
+  const series = (key: "balance" | "equity") =>
+    rows.flatMap((r) => {
+      const time = str(r.timestamp);
+      const value = num(r[key]);
+      return time && value !== null ? [{ time, value }] : [];
+    });
+  return {
+    balance: series("balance"),
+    equity: series("equity"),
+    collecting: d.status === "collecting_live_data",
+    snapshotCount: rows.length,
+  };
+}
+
+/* ---------- GET /api/alerts ---------- */
+
+/** `alerts` rows (database.py): level = info | warning | critical. */
+export function mapAlerts(raw: unknown): Alert[] {
+  const { data } = unwrap(raw);
+  if (!Array.isArray(data)) return [];
+  return data.filter(isObj).flatMap((a) => {
+    const alertId = id(a.id);
+    const message = str(a.message);
+    if (!alertId || !message) return [];
+    return [{ id: alertId, kind: str(a.category), message, time: str(a.timestamp), severity: str(a.level) }];
+  });
+}
+
+/* ---------- GET /api/baskets ---------- */
+
+/** logic.compute_baskets: { buy: {...}, sell: {...} } for GoldMiner (main magic) positions only. */
+export function mapBaskets(raw: unknown): Basket[] {
+  const { data } = unwrap(raw);
+  const d = isObj(data) ? data : {};
+  return (["buy", "sell"] as const).flatMap((side) => {
+    const b = d[side];
+    if (!isObj(b)) return [];
+    return [
+      {
+        side,
+        count: num(b.position_count),
+        lots: num(b.total_lots),
+        vwap: num(b.vwap),
+        tp: stop(b.basket_tp),
+        floatingPnl: num(b.floating_profit),
+      },
+    ];
+  });
+}

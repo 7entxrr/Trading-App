@@ -68,7 +68,11 @@ export function AnalyticsView() {
           <DataNotice
             resource={performance}
             isEmpty
-            empty={perf?.collecting ? "The server is still collecting history" : "Not enough history for this range yet"}
+            empty={
+              perf?.collecting
+                ? "The server is still collecting history (a point is saved about every 15 s)"
+                : "Not enough history for this range yet"
+            }
           />
         </div>
       )}
@@ -95,8 +99,8 @@ export function AnalyticsView() {
               ["Floating P/L", signedMoney(a?.profit, c)],
               ["Margin", money(a?.margin, c)],
               ["Free margin", money(a?.freeMargin, c)],
-              ["Profit", signedMoney(perf?.profit, c)],
-              ["Drawdown", perf?.drawdown == null ? "—" : `${num(perf.drawdown)}%`],
+              ["Margin level", a?.marginLevel == null ? "—" : `${num(a.marginLevel)}%`],
+              ["History points", perf ? String(perf.snapshotCount) : "—"],
             ] as [string, string][]
           ).map(([k, v]) => (
             <div key={k} className="rounded-[16px] bg-[#F4F6FB] px-4 py-3">

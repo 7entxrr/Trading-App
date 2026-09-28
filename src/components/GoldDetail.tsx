@@ -210,6 +210,15 @@ function Statistics() {
         ["Leverage", a.leverage === null ? "—" : `1:${num(a.leverage, 0)}`],
         ["Trading allowed", yesNo(a.tradeAllowed)],
         ["EA trading", yesNo(a.tradeExpert)],
+        [
+          "Trading window",
+          !st?.tradingWindow
+            ? "—"
+            : st.tradingWindow.active
+              ? `Open${st.tradingWindow.session ? ` · ${st.tradingWindow.session.replace("session", "S")}` : ""}`
+              : "Closed",
+        ],
+        ["Window hours", st?.tradingWindow?.sessions.map((x) => `${x.start}–${x.end}`).join(", ") || "—"],
         ["Balance multiplier", st?.multiplier == null ? "—" : `×${num(st.multiplier)}`],
         ["Balance slab", st?.slab ?? "—"],
         ["Broker", a.broker ?? "—"],

@@ -17,7 +17,7 @@ export function AlertsSheet({ open, onClose }: { open: boolean; onClose: () => v
           <li key={a.id} className="flex items-start gap-3 py-3">
             <span
               className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                a.severity === "error" || a.severity === "critical" ? "bg-[#E5484D]" : "bg-[#2966FF]"
+                a.severity === "critical" ? "bg-[#E5484D]" : a.severity === "warning" ? "bg-[#F5A524]" : "bg-[#2966FF]"
               }`}
             />
             <div className="flex-1">

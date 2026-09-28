@@ -5,15 +5,18 @@ Mobile-first Next.js app for monitoring and operating the GoldMiner MT5 account
 
 ## Status
 
-The frontend integration is complete **except for one step: mapping the live API
-responses** into the app's models. Until that's done, every screen shows
-"Live data connected — awaiting response mapping" instead of data. No mock data
-is used anywhere.
+All screens are mapped to the real GoldMiner API response formats (taken from
+the backend source: `main.py`, `trading.py`, `poller.py`, `mt5_bridge.py`,
+`schemas.py`, `database.py`, `logic.py`) in
+[`src/lib/api/mappers.ts`](src/lib/api/mappers.ts). No mock data is used.
 
-➡ **Remaining work:** implement the mappers in
-[`src/lib/api/mappers.ts`](src/lib/api/mappers.ts) from the real responses of
-the 12 GET endpoints (or the backend's `/openapi.json`). Nothing else needs to
-change — hooks, screens and actions already consume the mapped models.
+API limitations the UI reflects honestly:
+- There is no quote endpoint: the gold price is shown from open positions'
+  `price_current` and is unavailable when no gold position is open.
+- There is no price-history endpoint, so the Market chart shows an empty state.
+  The Analytics chart uses `/api/performance` snapshots (balance/equity).
+- `/api/control/stop-new-trades` and `/resume-trading` return 501 by design and
+  have no buttons.
 
 ## Architecture
 
@@ -33,7 +36,7 @@ GoldMiner API   https://goldminer-api.srv1995263.hstgr.cloud
 | App lock (passcode → httpOnly session cookie) | `src/app/api/session/route.ts`, `src/components/AuthGate.tsx` |
 | API client + one function per endpoint | `src/lib/api/client.ts`, `src/lib/api/goldminer.ts` |
 | Error parser (401/403/404/409/422/429/501/5xx) | `src/lib/api/errors.ts` |
-| Response → model mapping (**remaining**) | `src/lib/api/mappers.ts` |
+| Response → model mapping | `src/lib/api/mappers.ts` |
 | App view models | `src/lib/models.ts` |
 | Single polling loop (3 s, paused in background) | `src/lib/api/live.tsx` |
 | Resource hooks used by screens | `src/lib/api/hooks.ts` |
