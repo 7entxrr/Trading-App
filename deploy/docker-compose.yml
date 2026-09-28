@@ -1,0 +1,38 @@
+# GoldMiner dashboard — runs as its own container next to goldminer-api.
+# It does NOT touch the goldminer-api or MT5 containers; it only calls the
+# public API URL over HTTPS.
+#
+# Before `docker compose up -d`, create deploy/dashboard.env (never commit it):
+#   GOLDMINER_API_TOKEN=<same value as API_TOKEN in /opt/goldminer-api/.env>
+#   GOLDMINER_APP_PASSCODE=<a long passcode you choose>
+#   GOLDMINER_ENABLE_TRADING=false
+#
+# And set these three values below for your Traefik setup:
+#   DASHBOARD_DOMAIN  e.g. app.srv1995263.hstgr.cloud  (DNS must point at the VPS)
+#   TRAEFIK_NETWORK   the external Docker network Traefik uses
+#   CERT_RESOLVER     Traefik's certificate resolver name (e.g. letsencrypt)
+
+services:
+  goldminer-dashboard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: goldminer-dashboard
+    restart: unless-stopped
+    env_file: dashboard.env
+    environment:
+      GOLDMINER_API_BASE_URL: https://goldminer-api.srv1995263.hstgr.cloud
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.goldminer-dashboard.rule=Host(`${DASHBOARD_DOMAIN:?set DASHBOARD_DOMAIN}`)
+      - traefik.http.routers.goldminer-dashboard.entrypoints=websecure
+      - traefik.http.routers.goldminer-dashboard.tls=true
+      - traefik.http.routers.goldminer-dashboard.tls.certresolver=${CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.goldminer-dashboard.loadbalancer.server.port=3000
+
+networks:
+  traefik:
+    name: ${TRAEFIK_NETWORK:-traefik}
+    external: true
