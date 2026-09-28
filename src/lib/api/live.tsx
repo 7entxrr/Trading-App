@@ -22,7 +22,8 @@ export type LiveKey =
   | "performance"
   | "alerts"
   | "protection"
-  | "commands";
+  | "commands"
+  | "snapshot";
 
 const FETCHERS: Record<LiveKey, () => Promise<unknown>> = {
   status: gm.getStatus,
@@ -35,6 +36,7 @@ const FETCHERS: Record<LiveKey, () => Promise<unknown>> = {
   alerts: gm.getAlerts,
   protection: gm.getProtection,
   commands: gm.getCommands,
+  snapshot: gm.getSnapshot,
 };
 
 /** Fast-moving data polls every cycle; slower data less often. */
@@ -44,6 +46,7 @@ const EVERY_N_CYCLES: Record<LiveKey, number> = {
   positions: 1,
   orders: 1,
   baskets: 1,
+  snapshot: 1,
   protection: 2,
   commands: 2,
   alerts: 4,

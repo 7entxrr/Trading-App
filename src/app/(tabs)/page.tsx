@@ -1,7 +1,5 @@
-import Link from "next/link";
+import { HomePositions } from "@/components/HomePositions";
 import { HomeTop } from "@/components/HomeTop";
-import { PositionCard } from "@/components/PositionCard";
-import { positions } from "@/lib/data";
 
 export default function HomePage() {
   return (
@@ -9,17 +7,7 @@ export default function HomePage() {
       <HomeTop />
       <section className="screen-in flex-1 rounded-t-[28px] bg-white px-5 pt-3 pb-6">
         <div className="mx-auto h-1 w-10 rounded-full bg-[#E7E7E7]" />
-        <div className="mt-5 flex items-center justify-between px-1">
-          <h2 className="text-[24px] font-bold text-[#131313]">Positions</h2>
-          <Link href="/history" className="text-[15px] font-medium text-[#2966FF] active:opacity-60">
-            View all
-          </Link>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {positions.map((p, i) => (
-            <PositionCard key={p.id} position={p} index={i} />
-          ))}
-        </div>
+        <HomePositions />
       </section>
     </div>
   );

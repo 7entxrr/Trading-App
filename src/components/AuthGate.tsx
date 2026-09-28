@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { GoldLogo } from "./GoldLogo";
 import { LiveDataProvider } from "@/lib/api/live";
 
 type Status = "checking" | "locked" | "unlocked" | "unconfigured";
+
+const SessionContext = createContext({ tradingEnabled: false });
+
+/** Whether the server allows mutating actions (GOLDMINER_ENABLE_TRADING). */
+export function useTradingEnabled() {
+  return useContext(SessionContext).tradingEnabled;
+}
 
 /**
  * Keeps the app locked until the user enters the app passcode. The passcode is
@@ -13,22 +20,37 @@ type Status = "checking" | "locked" | "unlocked" | "unconfigured";
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
+  const [tradingEnabled, setTradingEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/session", { cache: "no-store" })
       .then(async (r) => {
         const b = await r.json().catch(() => ({}));
+        setTradingEnabled(b.tradingEnabled === true);
         setStatus(b.configured === false ? "unconfigured" : b.unlocked ? "unlocked" : "locked");
       })
       .catch(() => setStatus("locked"));
   }, []);
 
-  if (status === "unlocked") return <LiveDataProvider>{children}</LiveDataProvider>;
+  if (status === "unlocked")
+    return (
+      <SessionContext.Provider value={{ tradingEnabled }}>
+        <LiveDataProvider>{children}</LiveDataProvider>
+      </SessionContext.Provider>
+    );
   if (status === "checking") return <div className="min-h-dvh bg-[#131313]" />;
-  return <Unlock unconfigured={status === "unconfigured"} onUnlocked={() => setStatus("unlocked")} />;
+  return (
+    <Unlock
+      unconfigured={status === "unconfigured"}
+      onUnlocked={(t) => {
+        setTradingEnabled(t);
+        setStatus("unlocked");
+      }}
+    />
+  );
 }
 
-function Unlock({ unconfigured, onUnlocked }: { unconfigured: boolean; onUnlocked: () => void }) {
+function Unlock({ unconfigured, onUnlocked }: { unconfigured: boolean; onUnlocked: (tradingEnabled: boolean) => void }) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +68,7 @@ function Unlock({ unconfigured, onUnlocked }: { unconfigured: boolean; onUnlocke
       const b = await r.json().catch(() => ({}));
       if (r.ok && b.unlocked) {
         setPasscode("");
-        onUnlocked();
+        onUnlocked(b.tradingEnabled === true);
       } else setError(b?.error?.message ?? "Unable to unlock");
     } catch {
       setError("Unable to connect");

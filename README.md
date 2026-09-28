@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GoldMiner — mobile web app
 
-## Getting Started
+Mobile-first Next.js app for monitoring and operating the GoldMiner MT5 account
+(XAUUSD) through the GoldMiner Trading API.
 
-First, run the development server:
+## Status
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The frontend integration is complete **except for one step: mapping the live API
+responses** into the app's models. Until that's done, every screen shows
+"Live data connected — awaiting response mapping" instead of data. No mock data
+is used anywhere.
+
+➡ **Remaining work:** implement the mappers in
+[`src/lib/api/mappers.ts`](src/lib/api/mappers.ts) from the real responses of
+the 12 GET endpoints (or the backend's `/openapi.json`). Nothing else needs to
+change — hooks, screens and actions already consume the mapped models.
+
+## Architecture
+
+```
+Browser (React UI)
+  │  fetch /api/gm/<path>            ← no token, same-origin only
+  ▼
+Next.js server  src/app/api/gm/[...path]/route.ts
+  │  + Authorization: Bearer $GOLDMINER_API_TOKEN (server env only)
+  ▼
+GoldMiner API   https://goldminer-api.srv1995263.hstgr.cloud
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Layer | Files |
+| --- | --- |
+| Server proxy (allowlist, auth, no retries) | `src/app/api/gm/[...path]/route.ts`, `src/server/*` |
+| App lock (passcode → httpOnly session cookie) | `src/app/api/session/route.ts`, `src/components/AuthGate.tsx` |
+| API client + one function per endpoint | `src/lib/api/client.ts`, `src/lib/api/goldminer.ts` |
+| Error parser (401/403/404/409/422/429/501/5xx) | `src/lib/api/errors.ts` |
+| Response → model mapping (**remaining**) | `src/lib/api/mappers.ts` |
+| App view models | `src/lib/models.ts` |
+| Single polling loop (3 s, paused in background) | `src/lib/api/live.tsx` |
+| Resource hooks used by screens | `src/lib/api/hooks.ts` |
+| Mutations: request_id, loading, no double-submit, refresh | `src/lib/api/useAction.ts`, `src/lib/api/requestId.ts` |
+| Confirmations | `src/components/ConfirmSheet.tsx`, `src/components/ActionConfirm.tsx` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Safety rules built in
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- The API token exists only in server env. It is never sent to the browser,
+  never logged, never stored client-side, and never committed.
+- The proxy forwards only the endpoints on the approved checklist.
+- **All mutating actions are blocked server-side unless
+  `GOLDMINER_ENABLE_TRADING=true`.** Default: read-only.
+- Every mutating action needs explicit confirmation; Close ALL / Close BUY /
+  Close SELL show live counts and lots first; Emergency close requires typing
+  `CLOSE` and states it does not stop the EA.
+- Every user action gets a new `request_id`; nothing is ever retried
+  automatically. If a write's outcome is unknown, the app says so and re-reads
+  commands/positions instead of re-sending.
+- Position actions use tickets from the live list and are refused if the
+  position is no longer open.
+- Deposit/Withdraw are kept for the design but marked "Not available" — the API
+  has no endpoint for them.
 
-## Learn More
+## Configuration
 
-To learn more about Next.js, take a look at the following resources:
+Server-side environment variables (see `.env.example`). Never use `NEXT_PUBLIC_`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable | Purpose |
+| --- | --- |
+| `GOLDMINER_API_TOKEN` | Bearer token for the GoldMiner API |
+| `GOLDMINER_APP_PASSCODE` | Passcode to unlock the app |
+| `GOLDMINER_API_BASE_URL` | Optional, defaults to the production API |
+| `GOLDMINER_ENABLE_TRADING` | `true` to allow mutating actions; anything else = read-only |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For local development put them in `.env.local` (git-ignored).
 
-## Deploy on Vercel
+## Commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev          # http://localhost:3000
+npm run build
+npm run lint
+npm run discover-api # read-only: writes api-shapes.json (structure only, no values)
+```

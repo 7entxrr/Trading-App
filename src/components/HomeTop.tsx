@@ -2,41 +2,63 @@
 
 import { useState } from "react";
 import { Avatar } from "./Avatar";
+import { AlertsSheet } from "./AlertsSheet";
 import { Change } from "./Change";
 import { BellIcon, ChevronRight, PlusSquare, UploadSquare } from "./icons";
-import { Sheet, useToast } from "./Sheet";
-import { money, splitMoney } from "@/lib/format";
-import { notifications, user } from "@/lib/data";
+import { useToast } from "./Sheet";
+import { useAccount, useAlerts, useStatus } from "@/lib/api/hooks";
+import { splitMoney } from "@/lib/format";
+import type { ConnectionState } from "@/lib/models";
 
-type Panel = "deposit" | "withdraw" | "notifications" | null;
+const STATUS_STYLE: Record<ConnectionState, { dot: string; label: string }> = {
+  connected: { dot: "bg-[#22B573]", label: "Connected" },
+  stale: { dot: "bg-[#F5A524]", label: "Stale" },
+  disconnected: { dot: "bg-[#E5484D]", label: "Disconnected" },
+  unknown: { dot: "bg-[#6B6B6B]", label: "Status unknown" },
+};
 
-/** Dark header: profile, balance, today's change and the two action buttons. */
+/** Dark header: account, live balance, floating P/L and the two action buttons. */
 export function HomeTop() {
-  const [panel, setPanel] = useState<Panel>(null);
-  const [balance, setBalance] = useState(user.balance);
-  const [unread, setUnread] = useState(notifications.some((n) => n.unread));
+  const account = useAccount();
+  const status = useStatus();
+  const alerts = useAlerts();
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [seenAlerts, setSeenAlerts] = useState(0);
   const [toast, showToast] = useToast();
-  const [whole, cents] = splitMoney(balance);
-  const close = () => setPanel(null);
+
+  const a = account.data;
+  const [whole, cents] = splitMoney(a?.balance, a?.currency);
+  const conn: ConnectionState = status.data?.mt5 ?? "unknown";
+  const alertCount = alerts.data?.length ?? 0;
+
+  const notAvailable = () => showToast("Not available — the trading API has no deposit/withdraw endpoint");
 
   return (
     <header className="px-6 pt-[max(20px,env(safe-area-inset-top))] pb-9 text-white">
       <div className="flex h-12 items-center justify-between">
-        <button className="flex items-center gap-3 active:opacity-70">
+        <div className="flex items-center gap-3">
           <Avatar size={40} />
-          <span className="text-[15px] font-medium">{user.name}</span>
-          <ChevronRight className="h-4 w-4 text-[#7A7A7A]" />
-        </button>
+          <div>
+            <p className="flex items-center gap-1 text-[15px] font-medium">
+              {a?.login ? `#${a.login}` : "GoldMiner"}
+              <ChevronRight className="h-4 w-4 text-[#7A7A7A]" />
+            </p>
+            <p className="flex items-center gap-1.5 text-[12px] text-[#9A9A9A]">
+              <span className={`h-1.5 w-1.5 rounded-full ${STATUS_STYLE[conn].dot}`} />
+              {status.unmapped || status.error ? "Status unavailable" : STATUS_STYLE[conn].label}
+            </p>
+          </div>
+        </div>
         <button
-          aria-label="Notifications"
+          aria-label="Alerts"
           className="relative grid h-10 w-10 place-items-center rounded-full active:bg-white/10"
           onClick={() => {
-            setPanel("notifications");
-            setUnread(false);
+            setAlertsOpen(true);
+            setSeenAlerts(alertCount);
           }}
         >
           <BellIcon className="h-6 w-6" />
-          {unread && <span className="absolute top-[6px] right-[6px] h-[10px] w-[10px] rounded-full bg-[#F04438]" />}
+          {alertCount > seenAlerts && <span className="absolute top-[6px] right-[6px] h-[10px] w-[10px] rounded-full bg-[#F04438]" />}
         </button>
       </div>
 
@@ -45,133 +67,54 @@ export function HomeTop() {
           {whole}
           <span className="text-[#4A4A4A]">{cents}</span>
         </p>
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <Change value={user.todayChange} colored className="text-[15px]" />
-          <span className="rounded-full bg-[#232323] px-3 py-1 text-[13px] font-medium text-[#D6D6D6]">Today</span>
+        <div className="mt-4 flex min-h-[26px] items-center justify-center gap-3">
+          {a?.profit !== null && a?.profit !== undefined ? (
+            <>
+              <Change value={a.profit} colored className="text-[15px]" currency={a.currency} />
+              <span className="rounded-full bg-[#232323] px-3 py-1 text-[13px] font-medium text-[#D6D6D6]">Open P/L</span>
+            </>
+          ) : (
+            <span className="text-[13px] text-[#9A9A9A]">
+              {account.unmapped
+                ? "Awaiting response mapping"
+                : account.error
+                  ? account.error.message
+                  : account.loading
+                    ? "Loading…"
+                    : "P/L unavailable"}
+            </span>
+          )}
         </div>
       </div>
 
+      {/* Deposit/Withdraw kept for the design; the API has no endpoint for them. */}
       <div className="mt-9 grid grid-cols-2 gap-3">
         <button
-          onClick={() => setPanel("deposit")}
-          className="flex h-[54px] items-center justify-center gap-3 rounded-[16px] bg-[#2966FF] text-[16px] font-semibold transition active:scale-[0.97] active:bg-[#1f57e6]"
+          onClick={notAvailable}
+          aria-disabled="true"
+          className="flex h-[54px] items-center justify-center gap-3 rounded-[16px] bg-[#2966FF] text-[16px] font-semibold opacity-50"
         >
           <PlusSquare className="h-6 w-6" />
-          Deposit
+          <span className="flex flex-col items-start leading-tight">
+            Deposit
+            <span className="text-[11px] font-medium opacity-80">Not available</span>
+          </span>
         </button>
         <button
-          onClick={() => setPanel("withdraw")}
-          className="flex h-[54px] items-center justify-center gap-3 rounded-[16px] bg-[#232323] text-[16px] font-semibold transition active:scale-[0.97] active:bg-[#2c2c2c]"
+          onClick={notAvailable}
+          aria-disabled="true"
+          className="flex h-[54px] items-center justify-center gap-3 rounded-[16px] bg-[#232323] text-[16px] font-semibold opacity-50"
         >
           <UploadSquare className="h-6 w-6" />
-          Withdraw
+          <span className="flex flex-col items-start leading-tight">
+            Withdraw
+            <span className="text-[11px] font-medium opacity-80">Not available</span>
+          </span>
         </button>
       </div>
 
-      <Sheet open={panel === "notifications"} onClose={close} title="Notifications">
-        <ul className="divide-y divide-[#F0F0F0] text-[#131313]">
-          {notifications.map((n) => (
-            <li key={n.id} className="flex items-start gap-3 py-3">
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.unread ? "bg-[#2966FF]" : "bg-[#E0E0E0]"}`} />
-              <div className="flex-1">
-                <p className="text-[15px] font-medium">{n.title}</p>
-                <p className="mt-0.5 text-[13px] text-[#9A9A9A]">{n.time}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Sheet>
-
-      <AmountSheet
-        kind="deposit"
-        open={panel === "deposit"}
-        onClose={close}
-        onConfirm={(v) => {
-          setBalance((b) => b + v);
-          showToast(`Deposited ${money(v)}`);
-          close();
-        }}
-      />
-      <AmountSheet
-        kind="withdraw"
-        open={panel === "withdraw"}
-        max={balance}
-        onClose={close}
-        onConfirm={(v) => {
-          setBalance((b) => b - v);
-          showToast(`Withdrew ${money(v)}`);
-          close();
-        }}
-      />
+      <AlertsSheet open={alertsOpen} onClose={() => setAlertsOpen(false)} />
       {toast}
     </header>
-  );
-}
-
-const QUICK = [100, 250, 500, 1000];
-
-function AmountSheet({
-  kind,
-  open,
-  onClose,
-  onConfirm,
-  max,
-}: {
-  kind: "deposit" | "withdraw";
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (v: number) => void;
-  max?: number;
-}) {
-  const [value, setValue] = useState("");
-  const amount = Number(value) || 0;
-  const valid = amount > 0 && (max === undefined || amount <= max);
-  const deposit = kind === "deposit";
-
-  return (
-    <Sheet
-      open={open}
-      onClose={() => {
-        setValue("");
-        onClose();
-      }}
-      title={deposit ? "Deposit" : "Withdraw"}
-    >
-      <label className="block rounded-[16px] bg-[#F4F6FB] px-4 py-3 text-[#131313]">
-        <span className="text-[13px] text-[#8B8B8B]">Amount (USD)</span>
-        <div className="flex items-center text-[28px] font-bold">
-          $
-          <input
-            inputMode="decimal"
-            value={value}
-            onChange={(e) => setValue(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="0.00"
-            className="w-full bg-transparent pl-1 outline-none placeholder:text-[#C4C4C4]"
-          />
-        </div>
-      </label>
-      <div className="mt-3 grid grid-cols-4 gap-2">
-        {QUICK.map((q) => (
-          <button
-            key={q}
-            onClick={() => setValue(String(q))}
-            className="h-10 rounded-full border border-[#E3E3E3] text-[14px] font-medium text-[#131313] active:scale-95"
-          >
-            ${q}
-          </button>
-        ))}
-      </div>
-      {max !== undefined && <p className="mt-3 text-[13px] text-[#8B8B8B]">Available: {money(max)}</p>}
-      <button
-        disabled={!valid}
-        onClick={() => {
-          onConfirm(amount);
-          setValue("");
-        }}
-        className={`mt-5 h-[54px] w-full rounded-[16px] text-[16px] font-semibold text-white transition active:scale-[0.98] disabled:opacity-40 ${deposit ? "bg-[#2966FF]" : "bg-[#131313]"}`}
-      >
-        {deposit ? "Deposit" : "Withdraw"} {valid ? money(amount) : ""}
-      </button>
-    </Sheet>
   );
 }

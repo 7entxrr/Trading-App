@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { apiBaseUrl, apiToken, ConfigError } from "@/server/config";
+import { apiBaseUrl, apiToken, ConfigError, tradingEnabled } from "@/server/config";
 import { MAX_BODY_BYTES, matchRule } from "@/server/endpoints";
 import { isSameOrigin, isValidSession, SESSION_COOKIE } from "@/server/session";
 
@@ -37,6 +37,10 @@ async function handle(req: NextRequest, ctx: RouteContext<"/api/gm/[...path]">) 
 
   const mutating = method !== "GET";
   let body: string | undefined;
+
+  if (mutating && !tradingEnabled()) {
+    return error(403, "TRADING_DISABLED", "Trading actions are disabled on this server.");
+  }
 
   if (mutating) {
     // CSRF: only accept writes from this site's own pages.

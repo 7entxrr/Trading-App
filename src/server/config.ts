@@ -26,4 +26,12 @@ export function appPasscode(): string {
   return p;
 }
 
+/**
+ * Master switch for every mutating request (trade, close, TP/SL, orders,
+ * protection, control). Off unless explicitly set to "true" on the server.
+ */
+export function tradingEnabled(): boolean {
+  return process.env.GOLDMINER_ENABLE_TRADING === "true";
+}
+
 export class ConfigError extends Error {}

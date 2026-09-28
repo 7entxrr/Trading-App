@@ -1,52 +1,77 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { GoldLogo } from "./GoldLogo";
 import { Change } from "./Change";
+import { DataNotice } from "./DataNotice";
+import { GoldLogo } from "./GoldLogo";
+import { PositionSheet } from "./PositionSheet";
 import { PriceChart } from "./PriceChart";
-import { money, splitMoney } from "@/lib/format";
-import { makeSeries, ranges, type Range } from "@/lib/series";
-import { closedTrades, positionPnl, positions, user } from "@/lib/data";
-
-function signed(v: number) {
-  return `${v >= 0 ? "+" : "−"}${money(Math.abs(v))}`;
-}
+import { cardGradient } from "./PositionCard";
+import { useAccount, usePerformance, usePositions } from "@/lib/api/hooks";
+import { lots, money, num, price, signedMoney, splitMoney } from "@/lib/format";
+import { ranges, toSeries, type Range } from "@/lib/series";
 
 export function AnalyticsView() {
   const [range, setRange] = useState<Range>("7d");
-  const series = useMemo(() => makeSeries(97, user.balance, range), [range]);
-  const [whole, cents] = splitMoney(user.balance);
+  const [metric, setMetric] = useState<"equity" | "balance">("equity");
+  const [open, setOpen] = useState<string | null>(null);
+  const account = useAccount();
+  const performance = usePerformance();
+  const positions = usePositions();
 
-  const wins = closedTrades.filter((t) => t.pnl > 0).length;
-  const net = closedTrades.reduce((a, t) => a + t.pnl, 0);
-  const best = Math.max(...closedTrades.map((t) => t.pnl));
-  const openPnl = positions.reduce((a, p) => a + positionPnl(p), 0);
-  const stats = [
-    ["Win rate", `${Math.round((wins / closedTrades.length) * 100)}%`],
-    ["Closed trades", String(closedTrades.length)],
-    ["Net P/L", signed(net)],
-    ["Best trade", signed(best)],
-    ["Open P/L", signed(openPnl)],
-    ["Open positions", String(positions.length)],
-  ];
+  const a = account.data;
+  const c = a?.currency;
+  const [whole, cents] = splitMoney(a?.balance, c);
+  const series = useMemo(() => toSeries(performance.data?.[metric], range), [performance.data, metric, range]);
+  const list = positions.data ?? [];
+  const perf = performance.data;
 
   return (
     <>
       <div className="mt-5 rounded-[22px] bg-[#131313] p-5 text-white">
-        <p className="text-[13px] text-[#9A9A9A]">Total balance</p>
+        <p className="text-[13px] text-[#9A9A9A]">Balance</p>
         <p className="mt-1 text-[30px] font-bold">
           {whole}
           <span className="text-[#4A4A4A]">{cents}</span>
         </p>
-        <div className="mt-2 flex items-center gap-2">
-          <Change value={user.todayChange} colored className="text-[14px]" />
-          <span className="rounded-full bg-[#232323] px-2.5 py-0.5 text-[12px] text-[#D6D6D6]">Today</span>
+        <div className="mt-2 flex min-h-[24px] items-center gap-2">
+          {a?.profit != null ? (
+            <>
+              <Change value={a.profit} colored className="text-[14px]" currency={c} />
+              <span className="rounded-full bg-[#232323] px-2.5 py-0.5 text-[12px] text-[#D6D6D6]">Open P/L</span>
+            </>
+          ) : (
+            <DataNotice dark resource={account} className="!p-0 !bg-transparent !text-left" />
+          )}
         </div>
       </div>
 
-      <div className="-ml-5 mt-4">
-        <PriceChart series={series} />
+      <div className="mt-5 flex gap-2">
+        {(["equity", "balance"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMetric(m)}
+            className={`h-[34px] rounded-full px-4 text-[14px] font-medium capitalize active:scale-95 ${
+              metric === m ? "bg-[#131313] text-white" : "bg-[#ECEFFD] text-[#131313]"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
       </div>
+      {series ? (
+        <div className="-ml-5 mt-4">
+          <PriceChart series={series} />
+        </div>
+      ) : (
+        <div className="mt-4 grid h-[260px] place-items-center rounded-[20px] bg-gradient-to-b from-[#EEF3FE] to-white px-6">
+          <DataNotice
+            resource={performance}
+            isEmpty
+            empty={perf?.collecting ? "The server is still collecting history" : "Not enough history for this range yet"}
+          />
+        </div>
+      )}
       <div className="mt-5 grid grid-cols-4 gap-2">
         {ranges.map((r) => (
           <button
@@ -62,42 +87,61 @@ export function AnalyticsView() {
       </div>
 
       <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Performance</h2>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        {stats.map(([k, v]) => (
-          <div key={k} className="rounded-[16px] bg-[#F4F6FB] px-4 py-3">
-            <p className="text-[13px] text-[#8B8B8B]">{k}</p>
-            <p
-              className={`mt-1 text-[17px] font-semibold ${
-                v.startsWith("+") ? "text-[#22B573]" : v.startsWith("−") ? "text-[#E5484D]" : "text-[#131313]"
-              }`}
-            >
-              {v}
-            </p>
-          </div>
-        ))}
-      </div>
+      {a || perf ? (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {(
+            [
+              ["Equity", money(a?.equity, c)],
+              ["Floating P/L", signedMoney(a?.profit, c)],
+              ["Margin", money(a?.margin, c)],
+              ["Free margin", money(a?.freeMargin, c)],
+              ["Profit", signedMoney(perf?.profit, c)],
+              ["Drawdown", perf?.drawdown == null ? "—" : `${num(perf.drawdown)}%`],
+            ] as [string, string][]
+          ).map(([k, v]) => (
+            <div key={k} className="rounded-[16px] bg-[#F4F6FB] px-4 py-3">
+              <p className="text-[13px] text-[#8B8B8B]">{k}</p>
+              <p
+                className={`mt-1 text-[17px] font-semibold ${
+                  v.startsWith("+") ? "text-[#22B573]" : v.startsWith("−") ? "text-[#E5484D]" : "text-[#131313]"
+                }`}
+              >
+                {v}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DataNotice className="mt-3" resource={account} />
+      )}
 
       <h2 className="mt-8 text-[20px] font-bold text-[#131313]">Open positions</h2>
+      <DataNotice className="mt-3" resource={positions} isEmpty={list.length === 0} empty="No open positions" />
       <ul className="mt-3 space-y-3">
-        {positions.map((p) => {
-          const pnl = positionPnl(p);
-          return (
-            <li key={p.id} className="flex items-center gap-3 rounded-[18px] p-3" style={{ background: p.gradient }}>
+        {list.map((p, i) => (
+          <li key={p.ticket}>
+            <button
+              onClick={() => setOpen(p.ticket)}
+              className="flex w-full items-center gap-3 rounded-[18px] p-3 text-left active:scale-[0.98]"
+              style={{ background: cardGradient(i) }}
+            >
               <GoldLogo size={38} />
               <div className="flex-1">
                 <p className="text-[15px] font-semibold text-[#131313]">
-                  {p.side === "buy" ? "Buy" : "Sell"} {p.lots.toFixed(2)} lot
+                  {p.side === "buy" ? "Buy" : "Sell"} {lots(p.volume)} lot
                 </p>
                 <p className="text-[13px] text-[#8B8B8B]">
-                  #{p.id} · open {money(p.openPrice)}
+                  #{p.ticket} · open {price(p.openPrice)}
                 </p>
               </div>
-              <p className={`text-[15px] font-bold ${pnl >= 0 ? "text-[#22B573]" : "text-[#E5484D]"}`}>{signed(pnl)}</p>
-            </li>
-          );
-        })}
+              <p className={`text-[15px] font-bold ${(p.profit ?? 0) >= 0 ? "text-[#22B573]" : "text-[#E5484D]"}`}>
+                {signedMoney(p.profit, c)}
+              </p>
+            </button>
+          </li>
+        ))}
       </ul>
-
+      <PositionSheet ticket={open} onClose={() => setOpen(null)} currency={c} />
     </>
   );
 }

@@ -1,0 +1,152 @@
+/**
+ * The app's own view models — what each screen needs to display.
+ *
+ * These are NOT the GoldMiner API's field names. Raw API responses are turned
+ * into these types in `lib/api/mappers.ts`, which is the only place that will
+ * know real response fields. Anything the backend does not provide stays null
+ * and is shown as unavailable — values are never invented or estimated.
+ */
+
+export type Side = "buy" | "sell";
+
+export type ConnectionState = "connected" | "disconnected" | "stale" | "unknown";
+
+export interface SystemStatus {
+  mt5: ConnectionState;
+  eaRunning: boolean | null;
+  lastHeartbeat: string | null;
+  message: string | null;
+}
+
+export interface Account {
+  login: string | null;
+  server: string | null;
+  currency: string | null;
+  balance: number | null;
+  equity: number | null;
+  margin: number | null;
+  freeMargin: number | null;
+  marginLevel: number | null;
+  /** Floating profit/loss of open positions */
+  profit: number | null;
+  leverage: number | null;
+  tradeAllowed: boolean | null;
+  tradeExpert: boolean | null;
+  timestamp: string | null;
+  tradingWindow: string | null;
+  multiplier: number | null;
+  slab: string | null;
+}
+
+export interface Position {
+  ticket: string;
+  symbol: string | null;
+  side: Side;
+  volume: number;
+  openPrice: number | null;
+  currentPrice: number | null;
+  sl: number | null;
+  tp: number | null;
+  profit: number | null;
+  swap: number | null;
+  magic: number | null;
+  comment: string | null;
+  openTime: string | null;
+}
+
+export interface PendingOrder {
+  ticket: string;
+  symbol: string | null;
+  side: Side | null;
+  orderType: string | null;
+  volume: number | null;
+  price: number | null;
+  sl: number | null;
+  tp: number | null;
+  time: string | null;
+}
+
+export interface Trade {
+  id: string;
+  positionId: string | null;
+  symbol: string | null;
+  side: Side | null;
+  volume: number | null;
+  price: number | null;
+  profit: number | null;
+  commission: number | null;
+  swap: number | null;
+  fee: number | null;
+  magic: number | null;
+  comment: string | null;
+  time: string | null;
+}
+
+export interface Basket {
+  side: Side;
+  count: number | null;
+  lots: number | null;
+  vwap: number | null;
+  tp: number | null;
+  floatingPnl: number | null;
+}
+
+export interface TimePoint {
+  /** ISO timestamp */
+  time: string;
+  value: number;
+}
+
+export interface Performance {
+  balance: TimePoint[];
+  equity: TimePoint[];
+  profit: number | null;
+  drawdown: number | null;
+  /** Backend says it is still collecting history */
+  collecting: boolean;
+}
+
+export interface Alert {
+  id: string;
+  kind: string | null;
+  message: string;
+  time: string | null;
+  severity: string | null;
+}
+
+export interface ProtectionRule {
+  enabled: boolean;
+  target: number | null;
+  current: number | null;
+  action: string | null;
+  triggered: boolean;
+  executionStatus: string | null;
+  triggeredAt: string | null;
+  lastError: string | null;
+}
+
+export interface Protection {
+  tp: ProtectionRule | null;
+  sl: ProtectionRule | null;
+}
+
+export interface Command {
+  id: string;
+  action: string;
+  status: string;
+  ticket: string | null;
+  requestId: string | null;
+  time: string | null;
+  message: string | null;
+}
+
+/** Current gold quote, if the backend exposes one (e.g. in the snapshot). */
+export interface Market {
+  symbol: string | null;
+  bid: number | null;
+  ask: number | null;
+  /** Change since the start of the trading day, if provided */
+  change: number | null;
+  /** Price history for the chart, if provided. Never generated client-side. */
+  history: TimePoint[] | null;
+}

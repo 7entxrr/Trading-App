@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { ConfigError } from "@/server/config";
+import { ConfigError, tradingEnabled } from "@/server/config";
 import {
   clearLoginAttempts,
   createSessionValue,
@@ -22,7 +22,10 @@ function clientIp(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    return NextResponse.json({ unlocked: isValidSession(req.cookies.get(SESSION_COOKIE)?.value) });
+    return NextResponse.json({
+      unlocked: isValidSession(req.cookies.get(SESSION_COOKIE)?.value),
+      tradingEnabled: tradingEnabled(),
+    });
   } catch (e) {
     if (e instanceof ConfigError) return NextResponse.json({ unlocked: false, configured: false }, { status: 500 });
     throw e;
@@ -52,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: { code: "WRONG_PASSCODE", message: "Incorrect passcode." } }, { status: 401 });
     }
     clearLoginAttempts(ip);
-    const res = NextResponse.json({ unlocked: true });
+    const res = NextResponse.json({ unlocked: true, tradingEnabled: tradingEnabled() });
     res.cookies.set(SESSION_COOKIE, createSessionValue(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
