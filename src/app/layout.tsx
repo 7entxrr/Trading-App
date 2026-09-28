@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { AuthGate } from "@/components/AuthGate";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${jakarta.variable} antialiased`}>
       <body>
         {/* Phone-width app column; on desktop it sits centred on a grey backdrop. */}
-        <div className="relative mx-auto min-h-dvh max-w-[430px] overflow-x-clip bg-white">{children}</div>
+        <div className="relative mx-auto min-h-dvh max-w-[430px] overflow-x-clip bg-white">
+          <AuthGate>{children}</AuthGate>
+        </div>
       </body>
     </html>
   );
