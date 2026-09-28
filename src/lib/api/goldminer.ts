@@ -23,7 +23,8 @@ export const getPerformance = () => apiGet("api/performance");
 export const getAlerts = () => apiGet("api/alerts");
 export const getSnapshot = () => apiGet("api/snapshot");
 export const getProtection = () => apiGet("api/protection");
-export const getCommands = () => apiGet("api/commands");
+/** `limit` is supported by the backend (deployment report). */
+export const getCommands = (limit = 50) => apiGet("api/commands", { limit });
 
 /* ---------- Trade ---------- */
 

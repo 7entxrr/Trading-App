@@ -35,7 +35,7 @@ const FETCHERS: Record<LiveKey, () => Promise<unknown>> = {
   performance: gm.getPerformance,
   alerts: gm.getAlerts,
   protection: gm.getProtection,
-  commands: gm.getCommands,
+  commands: () => gm.getCommands(),
   snapshot: gm.getSnapshot,
 };
 

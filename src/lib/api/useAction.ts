@@ -8,10 +8,32 @@ import { newRequestId } from "./requestId";
 export type ActionState =
   | { phase: "idle" }
   | { phase: "running" }
-  | { phase: "success"; result: unknown }
+  | { phase: "success"; result: unknown; note: string | null }
   | { phase: "error"; error: ApiError }
   /** Sent, but we could not confirm whether it executed. Never auto-retried. */
   | { phase: "uncertain"; error: ApiError };
+
+/**
+ * The backend can answer HTTP 2xx while reporting that the command itself was
+ * rejected (deployment report: `status: "rejected"`, reason in
+ * `data.retcode_description`). Only `status: "completed"` — or a response
+ * without a status field — counts as success.
+ */
+function interpret(result: unknown): { ok: true; note: string | null } | { ok: false; message: string } {
+  if (!result || typeof result !== "object") return { ok: true, note: null };
+  const r = result as { status?: unknown; data?: { retcode_description?: unknown }; requested?: unknown; succeeded?: unknown; error?: unknown };
+  const reason = typeof r.data?.retcode_description === "string" ? r.data.retcode_description : null;
+  const bulk =
+    typeof r.requested === "number" && typeof r.succeeded === "number" ? `${r.succeeded} of ${r.requested} succeeded` : null;
+  if (typeof r.status === "string") {
+    const status = r.status.toLowerCase();
+    if (status === "rejected" || status === "failed" || status === "error") {
+      return { ok: false, message: `Rejected by the server${reason ? `: ${reason}` : ""}${bulk ? ` (${bulk})` : ""}` };
+    }
+    if (status !== "completed") return { ok: true, note: `Server status: ${r.status}${bulk ? ` · ${bulk}` : ""}` };
+  }
+  return { ok: true, note: bulk };
+}
 
 /**
  * Runs ONE user-initiated mutation.
@@ -38,7 +60,9 @@ export function useAction<Args extends unknown[]>(
       const requestId = newRequestId();
       try {
         const result = await run(requestId, ...args);
-        setState({ phase: "success", result });
+        const verdict = interpret(result);
+        if (verdict.ok) setState({ phase: "success", result, note: verdict.note });
+        else setState({ phase: "error", error: new ApiError(200, "COMMAND_REJECTED", verdict.message) });
         await refresh(REFRESH_AFTER[kind]);
       } catch (e) {
         const error = e instanceof ApiError ? e : new ApiError(0, "UNKNOWN", "Unexpected error");

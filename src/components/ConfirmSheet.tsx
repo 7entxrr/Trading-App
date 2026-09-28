@@ -42,6 +42,7 @@ export function ConfirmSheet({
       {state.phase === "success" && (
         <p className="mt-4 rounded-[14px] bg-[#E9F8F1] px-4 py-3 text-[14px] font-medium text-[#138A5A]">
           Server confirmed the request.
+          {state.note && <span className="mt-1 block text-[13px] font-normal">{state.note}</span>}
         </p>
       )}
       {state.phase === "error" && (
